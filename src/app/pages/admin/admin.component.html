@@ -1,0 +1,17 @@
+<section class="mx-auto max-w-6xl px-4 py-8">
+  <h2 class="text-2xl font-semibold mb-4">Administração</h2>
+  <div class="grid md:grid-cols-3 gap-4">
+    <div class="rounded-lg border bg-card p-4">
+      <div class="text-sm text-muted-foreground">Projetos</div>
+      <div class="text-3xl font-bold">{{data.projects$.value.length}}</div>
+    </div>
+    <div class="rounded-lg border bg-card p-4">
+      <div class="text-sm text-muted-foreground">Tarefas</div>
+      <div class="text-3xl font-bold">{{data.tasks$.value.length}}</div>
+    </div>
+    <div class="rounded-lg border bg-card p-4">
+      <div class="text-sm text-muted-foreground">Categorias</div>
+      <div class="text-3xl font-bold">{{data.categories.length}}</div>
+    </div>
+  </div>
+</section>

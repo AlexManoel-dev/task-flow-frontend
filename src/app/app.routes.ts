@@ -1,0 +1,40 @@
+import { Routes } from '@angular/router';
+import { LandingComponent } from './pages/landing/landing.component';
+import { LoginComponent } from './pages/auth/login.component';
+import { RegisterComponent } from './pages/auth/register.component';
+import { ForgotPasswordComponent } from './pages/auth/forgot-password.component';
+import { DashboardComponent } from './pages/dashboard/dashboard.component';
+import { ProjectDetailComponent } from './pages/project-detail/project-detail.component';
+import { AdminComponent } from './pages/admin/admin.component';
+import { authGuard } from './guards/auth.guard';
+import { MainLayoutComponent } from './pages/layouts/main-layout/main-layout.component';
+import { AuthLayoutComponent } from './pages/layouts/auth-layout/auth-layout.component';
+import { UserProfileComponent } from './pages/user-profile/user-profile.component';
+import { UsersListComponent } from './pages/user-list/user-list.component';
+
+export const routes: Routes = [
+  // { path: '', component: LandingComponent },
+  { path: '', pathMatch: 'full', redirectTo: 'login' },
+  {
+    path: '',
+    component: MainLayoutComponent,
+    canActivateChild: [authGuard],
+    children: [
+      { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
+      { path: 'dashboard/projects/:id', component: ProjectDetailComponent, canActivate: [authGuard] },
+      { path: 'profile', component: UserProfileComponent },
+      { path: 'users', component: UsersListComponent },
+      // TODO: Needs AdminGuard
+      { path: 'admin', component: AdminComponent, canActivate: [authGuard] },
+    ]
+  },
+  {
+    path: '',
+    component: AuthLayoutComponent,
+    children: [
+      { path: 'login', component: LoginComponent },
+      { path: 'register', component: RegisterComponent },
+      { path: 'forgot-password', component: ForgotPasswordComponent },
+    ]
+  },
+];

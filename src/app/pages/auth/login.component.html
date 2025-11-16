@@ -1,0 +1,107 @@
+<div class="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
+  <div class="bg-white w-full max-w-md p-8 rounded-2xl shadow-2xl border border-gray-100">
+    <!-- Logo/Icon -->
+    <div class="flex justify-center mb-6">
+      <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Título -->
+    <h2 class="text-3xl font-bold text-center mb-2 text-gray-800">Bem-vindo de volta</h2>
+    <p class="text-center text-gray-500 mb-8">Entre com suas credenciais para continuar</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-5">
+      <!-- Email -->
+      <div class="space-y-2">
+        <label class="text-sm font-medium text-gray-700">Email</label>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
+            </svg>
+          </div>
+          <input
+            type="email"
+            formControlName="email"
+            placeholder="seu@email.com"
+            class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 outline-none"
+            [class.border-red-500]="email?.invalid && email?.touched"
+            required
+          />
+        </div>
+        <p class="text-sm text-red-600 flex items-center gap-1" *ngIf="email?.invalid && email?.touched">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+          </svg>
+          Informe um email válido
+        </p>
+      </div>
+
+      <!-- Senha -->
+      <div class="space-y-2">
+        <label class="text-sm font-medium text-gray-700">Senha</label>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+            </svg>
+          </div>
+          <input
+            type="password"
+            formControlName="password"
+            placeholder="••••••••"
+            class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 outline-none"
+            [class.border-red-500]="password?.invalid && password?.touched"
+            required
+          />
+        </div>
+        <p class="text-sm text-red-600 flex items-center gap-1" *ngIf="password?.invalid && password?.touched">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+          </svg>
+          Senha obrigatória
+        </p>
+      </div>
+
+      <!-- Erro geral -->
+      <div class="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2" *ngIf="error">
+        <svg class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+        </svg>
+        <span class="text-sm text-red-800">{{ error }}</span>
+      </div>
+
+      <!-- Esqueci a senha -->
+      <div class="flex justify-end">
+        <a class="text-sm font-medium text-blue-600 hover:text-blue-700 transition" href="/forgot-password">
+          Esqueci minha senha
+        </a>
+      </div>
+
+      <!-- Botão -->
+      <button class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" (clicked)="submit()">
+        Entrar
+      </button>
+
+      <!-- Divisor -->
+      <div class="relative my-6">
+        <div class="absolute inset-0 flex items-center">
+          <div class="w-full border-t border-gray-200"></div>
+        </div>
+        <div class="relative flex justify-center text-sm">
+          <span class="px-4 bg-white text-gray-500">Não tem uma conta?</span>
+        </div>
+      </div>
+
+      <!-- Link para registro -->
+      <div class="text-center">
+        <a class="text-sm font-medium text-blue-600 hover:text-blue-700 transition" href="/register">
+          Criar uma conta gratuita
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
