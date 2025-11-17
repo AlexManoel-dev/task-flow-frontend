@@ -10,7 +10,7 @@
             class="text-xs font-medium px-3 py-1 rounded-full"
             [ngClass]="{
               'bg-green-100 text-green-700 border border-green-200': getProjectStatus(p.status) === 'active',
-              'bg-gray-100 text-gray-700 border border-gray-200': getProjectStatus(p.status) === 'completed',
+              'bg-gray-100 text-gray-700 border border-gray-200': getProjectStatus(p.status) === 'done',
               'bg-yellow-100 text-yellow-700 border border-yellow-200': getProjectStatus(p.status) === 'on-hold'
             }">
             {{p.status}}
@@ -50,9 +50,10 @@
 
   <!-- Tasks Section -->
   <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
       <h3 class="text-xl font-semibold text-gray-800">Tarefas</h3>
-      <button 
+      <button
+        *ngIf="checkIfIsManagerOrAdmin(project)"
         (click)="openAddTaskModal()"
         class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -62,13 +63,76 @@
       </button>
     </div>
 
+    <!-- Filtros -->
+    <div class="mb-6 space-y-4">
+      <!-- Barra de busca -->
+      <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </div>
+        <input 
+          type="text"
+          [value]="query()"
+          (input)="updateQuery($any($event.target).value)"
+          placeholder="Buscar por título, descrição ou responsável..."
+          class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition outline-none" />
+      </div>
+
+      <!-- Filtros de Status e Prioridade -->
+      <div class="flex flex-wrap gap-3 items-center">
+        <!-- Filtro de Status -->
+        <div class="flex items-center gap-2">
+          <label class="text-sm font-medium text-gray-700">Status:</label>
+          <select 
+            [value]="statusFilter()"
+            (change)="updateStatusFilter($any($event.target).value)"
+            class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+            <option value="all">Todos</option>
+            <option value="todo">A fazer</option>
+            <option value="in_progress">Em progresso</option>
+            <option value="done">Concluída</option>
+          </select>
+        </div>
+
+        <!-- Filtro de Prioridade -->
+        <div class="flex items-center gap-2">
+          <label class="text-sm font-medium text-gray-700">Prioridade:</label>
+          <select 
+            [value]="priorityFilter()"
+            (change)="updatePriorityFilter($any($event.target).value)"
+            class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+            <option value="all">Todas</option>
+            <option value="low">Baixa</option>
+            <option value="medium">Média</option>
+            <option value="high">Alta</option>
+          </select>
+        </div>
+
+        <!-- Botão Limpar Filtros -->
+        <button
+          *ngIf="query() || statusFilter() !== 'all' || priorityFilter() !== 'all'"
+          (click)="clearFilters()"
+          class="ml-auto px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition">
+          Limpar filtros
+        </button>
+
+        <!-- Contador de tarefas -->
+        <div class="text-sm text-gray-500">
+          <span class="font-medium">{{ filteredTasks().length }}</span> de 
+          <span class="font-medium">{{ tasks().length }}</span> tarefa(s)
+        </div>
+      </div>
+    </div>
+
     <div class="space-y-3">
       <div 
-        *ngFor="let t of tasks" 
+        *ngFor="let t of filteredTasks()" 
         class="group rounded-lg border p-4 hover:shadow-md transition-all duration-200"
         [ngClass]="{
-          'bg-green-50 border-green-200': t.normalizedStatus === 'completed',
-          'bg-blue-50 border-blue-200': t.normalizedStatus === 'in-progress',
+          'bg-green-50 border-green-200': t.normalizedStatus === 'done',
+          'bg-blue-50 border-blue-200': t.normalizedStatus === 'in_progress',
           'bg-gray-50 border-gray-200': t.normalizedStatus === 'todo'
         }">
         
@@ -80,14 +144,14 @@
               <div 
                 class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
                 [ngClass]="{
-                  'bg-green-500': t.normalizedStatus === 'completed',
-                  'bg-blue-500': t.normalizedStatus === 'in-progress',
+                  'bg-green-500': t.normalizedStatus === 'done',
+                  'bg-blue-500': t.normalizedStatus === 'in_progress',
                   'bg-gray-300': t.normalizedStatus === 'todo'
                 }">
-                <svg *ngIf="t.normalizedStatus === 'completed'" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg *ngIf="t.normalizedStatus === 'done'" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                 </svg>
-                <svg *ngIf="t.normalizedStatus === 'in-progress'" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg *ngIf="t.normalizedStatus === 'in_progress'" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
                 <svg *ngIf="t.normalizedStatus === 'todo'" class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -98,7 +162,7 @@
               <div class="flex-1">
                 <h4 
                   class="font-semibold text-gray-800 group-hover:text-blue-600 transition"
-                  [ngClass]="{'line-through text-gray-500': t.normalizedStatus === 'completed'}">
+                  [ngClass]="{'line-through text-gray-500': t.normalizedStatus === 'done'}">
                   {{t.title}}
                 </h4>
                 <p class="text-sm text-gray-600 mt-1">{{t.description}}</p>
@@ -147,13 +211,14 @@
           <div class="flex items-center gap-2">
             <!-- Status Dropdown -->
             <div class="relative">
-              <button
+              <ng-container *ngIf="checkIfIsResponsibleOrMember(t)">
+                <button
                 (click)="toggleStatusDropdown(t.id); $event.stopPropagation()"
                 type="button"
                 class="text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap cursor-pointer hover:opacity-80 transition flex items-center gap-1"
                 [ngClass]="{
-                  'bg-green-100 text-green-700 border border-green-300': t.normalizedStatus === 'completed',
-                  'bg-blue-100 text-blue-700 border border-blue-300': t.normalizedStatus === 'in-progress',
+                  'bg-green-100 text-green-700 border border-green-300': t.normalizedStatus === 'done',
+                  'bg-blue-100 text-blue-700 border border-blue-300': t.normalizedStatus === 'in_progress',
                   'bg-gray-100 text-gray-700 border border-gray-300': t.normalizedStatus === 'todo'
                 }">
                 {{getStatusLabel(t.status)}}
@@ -161,6 +226,20 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                 </svg>
               </button>
+              </ng-container>
+              
+              <ng-container *ngIf="!checkIfIsResponsibleOrMember(t)">
+                <button
+                type="button"
+                class="text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap cursor-pointer hover:opacity-80 transition flex items-center gap-1"
+                [ngClass]="{
+                  'bg-green-100 text-green-700 border border-green-300': t.normalizedStatus === 'done',
+                  'bg-blue-100 text-blue-700 border border-blue-300': t.normalizedStatus === 'in_progress',
+                  'bg-gray-100 text-gray-700 border border-gray-300': t.normalizedStatus === 'todo'
+                }">
+                {{getStatusLabel(t.status)}}
+              </button>
+              </ng-container>
 
               <!-- Dropdown Menu -->
               <div 
@@ -174,13 +253,13 @@
                   A fazer
                 </button>
                 <button
-                  (click)="updateTaskStatus(t.id, 'in-progress')"
+                  (click)="updateTaskStatus(t.id, 'in_progress')"
                   class="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex items-center gap-2">
                   <span class="w-3 h-3 rounded-full bg-blue-500"></span>
                   Em progresso
                 </button>
                 <button
-                  (click)="updateTaskStatus(t.id, 'completed')"
+                  (click)="updateTaskStatus(t.id, 'done')"
                   class="w-full text-left px-3 py-2 text-sm hover:bg-green-50 flex items-center gap-2">
                   <span class="w-3 h-3 rounded-full bg-green-500"></span>
                   Concluída
@@ -190,6 +269,7 @@
 
             <!-- Edit Button -->
             <button
+              *ngIf="checkIfIsResponsibleOrMember(t)"
               (click)="openEditTaskModal(t); $event.stopPropagation()"
               type="button"
               class="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
@@ -201,6 +281,7 @@
 
             <!-- Delete Button -->
             <button
+              *ngIf="checkIfIsResponsibleOrMember(t)"
               (click)="openDeleteTaskModal(t); $event.stopPropagation()"
               type="button"
               class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
@@ -213,8 +294,24 @@
         </div>
       </div>
 
-      <!-- Empty State -->
-      <div *ngIf="tasks.length === 0" class="text-center py-12">
+      <!-- Empty State - Com filtros aplicados -->
+      <div *ngIf="filteredTasks().length === 0 && tasks().length > 0" class="text-center py-12">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+          <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">Nenhuma tarefa encontrada</h3>
+        <p class="text-gray-500 mb-4">Tente ajustar os filtros de busca</p>
+        <button
+          (click)="clearFilters()"
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+          Limpar filtros
+        </button>
+      </div>
+
+      <!-- Empty State - Sem tarefas -->
+      <div *ngIf="tasks().length === 0" class="text-center py-12">
         <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
           <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
@@ -222,7 +319,8 @@
         </div>
         <h3 class="text-lg font-semibold text-gray-800 mb-2">Nenhuma tarefa ainda</h3>
         <p class="text-gray-500 mb-4">Comece criando sua primeira tarefa para este projeto</p>
-        <button 
+        <button
+          *ngIf="checkIfIsManagerOrAdmin(project)"
           (click)="openAddTaskModal()"
           class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -286,7 +384,7 @@
           formControlName="assigneeId"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
           <option value="">Selecione</option>
-          <option *ngFor="let user of users" [value]="user.id">{{user.fullName}}</option>
+          <option *ngFor="let user of users" [value]="user.userId">{{ user.user.fullName }}</option>
         </select>
       </div>
 
@@ -327,7 +425,7 @@
         class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium">
         Cancelar
       </button>
-      <button 
+      <button
         type="submit"
         class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
         Criar Tarefa
@@ -335,6 +433,7 @@
     </div>
   </form>
 </app-modal>
+
 
 <!-- Edit Task Modal -->
 <app-modal [isOpen]="isEditTaskModalOpen" title="Editar Tarefa" (closed)="closeEditTaskModal()">
@@ -374,7 +473,7 @@
           formControlName="assigneeId"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
           <option value="">Selecione</option>
-          <option *ngFor="let user of users" [value]="user.id">{{user.fullName}}</option>
+          <option *ngFor="let user of users" [value]="user.userId">{{ user.user.fullName }}</option>
         </select>
       </div>
 

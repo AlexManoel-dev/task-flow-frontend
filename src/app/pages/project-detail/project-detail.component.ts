@@ -1,4 +1,4 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+import { Component, OnInit, HostListener, signal, computed } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { NgFor, NgIf, NgClass } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
@@ -8,6 +8,7 @@ import { ModalComponent } from '../../shared/modal/modal.component';
 import { TaskService } from '../../services/task.service';
 import { ToastrService } from 'ngx-toastr';
 import { ProjectService } from '../../services/project.service';
+import { UserService } from '../../services/user.service';
 
 @Component({
   selector: 'app-project-detail',
@@ -18,24 +19,52 @@ import { ProjectService } from '../../services/project.service';
 export class ProjectDetailComponent implements OnInit {
   projectId = this.route.snapshot.paramMap.get('id')!;
   project: any;
-  tasks: any[] = [];
-  users = mockUsers;
+  tasks = signal<any[]>([]); // 👈 Agora é signal
+  query = signal(''); // 👈 Signal para busca
+  statusFilter = signal<string>('all'); // 👈 Signal para filtro de status
+  priorityFilter = signal<string>('all'); // 👈 Signal para filtro de prioridade
+  users: any = [];
   taskTypes = ['feature', 'fix', 'refactor', 'docs', 'test', 'others'];
   isAddTaskModalOpen = false;
   isEditTaskModalOpen = false;
   isDeleteTaskModalOpen = false;
   selectedTask: any = null;
   openStatusDropdown: string | null = null;
+  currentUser: any;
   
   taskForm = this.fb.group({
     title: ['', Validators.required],
     description: [''],
-    status: ['Em progresso'],
-    priority: ['medium'],
+    status: [''],
+    priority: [''],
     startDate: [''],
     dueDate: [''],
     taskType: [''],
     assigneeId: [2],
+  });
+
+  // 👇 Computed que filtra as tarefas
+  filteredTasks = computed(() => {
+    const q = this.query().toLowerCase();
+    const statusF = this.statusFilter();
+    const priorityF = this.priorityFilter();
+    const tasksList = this.tasks();
+
+    return tasksList.filter((task: any) => {
+      // Filtro de texto
+      const matchesQuery = !q || 
+        task.title.toLowerCase().includes(q) ||
+        (task.description && task.description.toLowerCase().includes(q)) ||
+        (task.assignee?.fullName && task.assignee.fullName.toLowerCase().includes(q));
+
+      // Filtro de status
+      const matchesStatus = statusF === 'all' || task.normalizedStatus === statusF;
+
+      // Filtro de prioridade
+      const matchesPriority = priorityF === 'all' || task.priority === priorityF;
+
+      return matchesQuery && matchesStatus && matchesPriority;
+    });
   });
 
   constructor(
@@ -44,34 +73,61 @@ export class ProjectDetailComponent implements OnInit {
     private fb: FormBuilder,
     private taskService: TaskService,
     private toastr: ToastrService,
-    private projectService: ProjectService
+    private projectService: ProjectService,
+    private userService: UserService
   ) {}
 
   ngOnInit(): void {
     this.findProject();
     this.getTasks();
+    this.userService.getUser().subscribe({
+      next: (res) => {
+        this.currentUser = res;
+      },
+      error: (err) => {
+        console.log(err);
+      }
+    });
+  }
+
+  updateQuery(value: string): void {
+    this.query.set(value);
+  }
+
+  updateStatusFilter(value: string): void {
+    this.statusFilter.set(value);
+  }
+
+  updatePriorityFilter(value: string): void {
+    this.priorityFilter.set(value);
+  }
+
+  clearFilters(): void {
+    this.query.set('');
+    this.statusFilter.set('all');
+    this.priorityFilter.set('all');
   }
 
   getOwnerName(ownerId: string): string {
-    const owner = this.users.find(u => u.id === ownerId);
+    const owner = this.users.find((u: any) => u.id === ownerId);
     return owner ? owner.fullName : 'Não atribuído';
   }
 
   getAssigneeName(assigneeId?: number): string {
     if (!assigneeId) return 'Não atribuído';
-    const assignee = this.users.find(u => Number(u.id) === assigneeId);
+    const assignee = this.users.find((u: any) => Number(u.id) === assigneeId);
     return assignee ? assignee.fullName : 'Não atribuído';
   }
 
   // Função para normalizar o status do backend para o formato do frontend
-  normalizeStatus(status: string): 'todo' | 'in-progress' | 'completed' {
-    const statusMap: Record<string, 'todo' | 'in-progress' | 'completed'> = {
+  normalizeStatus(status: string): 'todo' | 'in_progress' | 'done' {
+    const statusMap: Record<string, 'todo' | 'in_progress' | 'done'> = {
       'A fazer': 'todo',
       'todo': 'todo',
-      'Em progresso': 'in-progress',
-      'in-progress': 'in-progress',
-      'Concluída': 'completed',
-      'completed': 'completed'
+      'Em progresso': 'in_progress',
+      'in_progress': 'in_progress',
+      'Concluída': 'done',
+      'done': 'done'
     };
     return statusMap[status] || 'todo';
   }
@@ -79,8 +135,8 @@ export class ProjectDetailComponent implements OnInit {
   getStatusLabel(status: string): string {
     const labels: Record<string, string> = {
       'todo': 'A fazer',
-      'in-progress': 'Em progresso',
-      'completed': 'Concluída',
+      'in_progress': 'Em progresso',
+      'done': 'Concluída',
       'A fazer': 'A fazer',
       'Em progresso': 'Em progresso',
       'Concluída': 'Concluída'
@@ -107,6 +163,7 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   openAddTaskModal(): void {
+    this.getUsers();
     this.isAddTaskModalOpen = true;
   }
 
@@ -121,6 +178,15 @@ export class ProjectDetailComponent implements OnInit {
 
   getProjectStatus(status: string): string {
     return status.toLowerCase();
+  }
+
+  checkIfIsManagerOrAdmin(project: any): boolean {
+    return project.managerId === this.currentUser.id || this.currentUser.roles.includes('Administrator');
+  }
+
+  checkIfIsResponsibleOrMember(task: any): boolean {
+    const members = this.project.members.map((data: any) => data.userId);
+    return task.assigneeId === this.currentUser.id && members.includes(this.currentUser.id) || this.checkIfIsManagerOrAdmin(this.project);
   }
 
   findProject(): void {
@@ -140,25 +206,43 @@ export class ProjectDetailComponent implements OnInit {
     });
   }
 
+  getUsers(): void {
+    this.projectService.getMembers(Number(this.projectId)).subscribe({
+      next: (res) => {
+        console.log('membros', res);
+        this.users = res;
+      },
+      error: (err) => console.error('Erro ao buscar tarefas', err),
+    });
+  }
+
   getTasks(): void {
     this.taskService.getTasks(Number(this.projectId)).subscribe({
       next: (res) => {
         console.log('tasks', res);
         // Mapeia os dados do backend para incluir o status normalizado
-        this.tasks = res.map((task: any) => ({
+        const tasksList = res.map((task: any) => ({
           ...task,
           normalizedStatus: this.normalizeStatus(task.status)
         }));
+        this.tasks.set(tasksList); // 👈 Atualiza o signal
       },
       error: (err) => console.error('Erro ao buscar tarefas', err),
     });
   }
 
   createTask(): void {
-    this.taskService.createTask(Number(this.projectId), this.taskForm.value).subscribe({
+    const payload = {
+      ...this.taskForm.value,
+      assigneeId: Number(this.taskForm.value.assigneeId),
+      status: 'todo'
+    };
+
+    this.taskService.createTask(Number(this.projectId), payload).subscribe({
       next: (res) => {
         this.toastr.success('Tarefa criada com sucesso!', 'Sucesso!');
-        this.getTasks(); // Recarrega as tarefas
+        this.closeAddTaskModal();
+        this.getTasks();
       },
       error: (err) => {
         console.error('Erro ao criar tarefa', err);
@@ -173,7 +257,6 @@ export class ProjectDetailComponent implements OnInit {
       return;
     }
     this.createTask();
-    this.closeAddTaskModal();
   }
 
   toggleStatusDropdown(taskId: number | string): void {
@@ -182,37 +265,35 @@ export class ProjectDetailComponent implements OnInit {
     console.log('Dropdown aberto para:', id, 'Estado atual:', this.openStatusDropdown);
   }
 
-  updateTaskStatus(taskId: number | string, newStatus: 'todo' | 'in-progress' | 'completed'): void {
+  updateTaskStatus(taskId: number | string, newStatus: 'todo' | 'in_progress' | 'done'): void {
     // Converte o status para o formato do backend
     const statusMap: Record<string, string> = {
       'todo': 'A fazer',
-      'in-progress': 'Em progresso',
-      'completed': 'Concluída'
+      'in_progress': 'Em progresso',
+      'done': 'Concluída'
     };
     
     const backendStatus = statusMap[newStatus];
+
+    console.log('newStatus', newStatus);
+    console.log('backendStatus', backendStatus);
     
-    // Chama a API para atualizar o status
-    // this.taskService.updateTaskStatus(Number(taskId), backendStatus).subscribe({
-    //   next: () => {
-    //     // Atualiza localmente
-    //     this.tasks = this.tasks.map(task => 
-    //       task.id === taskId 
-    //         ? { ...task, status: backendStatus, normalizedStatus: newStatus } 
-    //         : task
-    //     );
-        
-    //     this.openStatusDropdown = null;
-    //     this.toastr.success('Status atualizado!', 'Sucesso!');
-    //   },
-    //   error: (err) => {
-    //     console.error('Erro ao atualizar status', err);
-    //     this.toastr.error('Erro ao atualizar status', 'Erro!');
-    //   }
-    // });
+    this.taskService.updateTaskStatus(Number(taskId), { status: newStatus }).subscribe({
+      next: (res) => {
+        console.log('res', res);
+        this.openStatusDropdown = null;
+        this.toastr.success('Status atualizado!', 'Sucesso!');
+        this.getTasks();
+      },
+      error: (err) => {
+        console.error('Erro ao atualizar status', err);
+        this.toastr.error('Erro ao atualizar status', 'Erro!');
+      }
+    });
   }
 
   openEditTaskModal(task: any): void {
+    this.getUsers();
     console.log('Abrindo modal de edição para:', task);
     this.selectedTask = task;
     
@@ -232,6 +313,8 @@ export class ProjectDetailComponent implements OnInit {
       taskType: task.taskType,
       assigneeId: task.assigneeId,
     });
+
+    console.log('taskForm', this.taskForm.value);
     
     this.isEditTaskModalOpen = true;
   }
@@ -247,12 +330,18 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   updateTask(): void {
+    this.getUsers();
     if (this.taskForm.invalid || !this.selectedTask) {
       this.taskForm.markAllAsTouched();
       return;
     }
 
-    this.taskService.updateTask(this.selectedTask.id, this.taskForm.value).subscribe({
+    const payload = {
+      ...this.taskForm.value,
+      assigneeId: Number(this.taskForm.value.assigneeId)
+    };
+
+    this.taskService.updateTask(this.selectedTask.id, payload).subscribe({
       next: () => {
         this.toastr.success('Tarefa atualizada com sucesso!', 'Sucesso!');
         this.getTasks();

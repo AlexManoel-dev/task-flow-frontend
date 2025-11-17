@@ -56,6 +56,15 @@ export class TaskService {
     });
   }
 
+  updateTaskStatus(taskId: number, payload: any): Observable<any> {
+    return this.apiService.patch({
+      url: `tasks/${taskId}/status`,
+      payload: {
+        status: payload.status
+      }
+    });
+  }
+
   deleteTask(taskId: number): Observable<any> {
     return this.apiService.delete({
       url: `tasks/${taskId}`

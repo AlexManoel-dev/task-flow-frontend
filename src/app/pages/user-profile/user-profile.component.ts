@@ -18,7 +18,7 @@ export class UserProfileComponent implements OnInit {
 
   profileForm = this.fb.group({
     fullName: ['', Validators.required],
-    role: ['']
+    position: ['']
   });
 
   constructor(
@@ -45,7 +45,7 @@ export class UserProfileComponent implements OnInit {
 
     this.profileForm.patchValue({
       fullName: this.currentUser.fullName || '',
-      role: this.currentUser.roles?.[0] || ''
+      position: this.currentUser.position || ''
     });
   }
 
@@ -87,7 +87,7 @@ export class UserProfileComponent implements OnInit {
     this.currentUser = {
       ...this.currentUser,
       fullName: formValue.fullName || this.currentUser.fullName,
-      roles: formValue.role ? [formValue.role] : this.currentUser.roles
+      position: formValue.position || this.currentUser.position
     };
 
     this.userService.updateUser(this.currentUser).subscribe({

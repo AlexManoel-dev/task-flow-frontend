@@ -11,6 +11,7 @@ import { MainLayoutComponent } from './pages/layouts/main-layout/main-layout.com
 import { AuthLayoutComponent } from './pages/layouts/auth-layout/auth-layout.component';
 import { UserProfileComponent } from './pages/user-profile/user-profile.component';
 import { UsersListComponent } from './pages/user-list/user-list.component';
+import { adminGuard } from './guards/admin.guard';
 
 export const routes: Routes = [
   // { path: '', component: LandingComponent },
@@ -23,7 +24,7 @@ export const routes: Routes = [
       { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
       { path: 'dashboard/projects/:id', component: ProjectDetailComponent, canActivate: [authGuard] },
       { path: 'profile', component: UserProfileComponent },
-      { path: 'users', component: UsersListComponent },
+      { path: 'users', component: UsersListComponent, canActivate: [adminGuard] },
       // TODO: Needs AdminGuard
       { path: 'admin', component: AdminComponent, canActivate: [authGuard] },
     ]

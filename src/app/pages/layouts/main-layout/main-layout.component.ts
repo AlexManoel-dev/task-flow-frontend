@@ -17,7 +17,8 @@ import { skip, take } from 'rxjs';
 export class MainLayoutComponent implements OnInit {
   isSidebarOpen = false;
   isUserMenuOpen = false;
-  isEcommerceOpen = false;
+  isAdminOpen = false;
+  isAdmin = false;
 
   userData!: IUser;
 
@@ -41,7 +42,7 @@ export class MainLayoutComponent implements OnInit {
       next: res => {
         this.userData = res;
         this.userService.setUser(res);
-        console.log('res', res);
+        this.isAdmin = res.roles.includes('Administrator');
       },
       error: err => console.error('Erro ao recuperar sessão', err),
     });
@@ -62,7 +63,7 @@ export class MainLayoutComponent implements OnInit {
   }
 
   toggleEcommerce() {
-    this.isEcommerceOpen = !this.isEcommerceOpen;
+    this.isAdminOpen = !this.isAdminOpen;
   }
 
   logout() {

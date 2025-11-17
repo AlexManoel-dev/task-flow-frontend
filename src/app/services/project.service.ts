@@ -22,11 +22,12 @@ export class ProjectService {
       url: 'projects',
       payload: {
         name: payload.name,
-        projectKey: payload.projectKey.toUpperCase(),
         description: payload.description,
-        category: payload.category,
+        status: 'active',
+        categoryId: payload.categoryId,
         startDate: payload.startDate,
-        endDate: payload.endDate
+        endDate: payload.endDate,
+        memberIds: payload.memberIds
       }
     });
   }
@@ -36,11 +37,12 @@ export class ProjectService {
       url: `projects/${projectId}`,
       payload: {
         name: payload.name,
-        projectKey: payload.projectKey.toUpperCase(),
         description: payload.description,
-        category: payload.category,
+        status: 'active',
+        categoryId: payload.categoryId,
         startDate: payload.startDate,
-        endDate: payload.endDate
+        endDate: payload.endDate,
+        memberIds: payload.memberIds
       }
     });
   }
@@ -49,5 +51,13 @@ export class ProjectService {
     return this.apiService.delete({
       url: `projects/${projectId}`
     });
+  }
+
+  getProjectCategories(): Observable<any> {
+    return this.apiService.get({ url: 'projects/categories' });
+  }
+
+  getMembers(projectId: number): Observable<any> {
+    return this.apiService.get({ url: `projects/${projectId}/members` });
   }
 }

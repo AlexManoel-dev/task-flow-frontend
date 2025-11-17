@@ -15,6 +15,20 @@ export class UserService {
     private toastr: ToastrService
   ) {}
 
+  private isAdmin = new BehaviorSubject<boolean>(false);
+
+  admin$ = this.isAdmin.asObservable().pipe(
+    distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b))
+  );
+
+  setIsAdmin(value: boolean) {
+    this.isAdmin.next(value);
+  }
+
+  getIsAdmin(): Observable<boolean> {
+    return this.admin$;
+  }
+
   private userSubject = new BehaviorSubject<IUser | null>(null);
 
   user$ = this.userSubject.asObservable().pipe(
@@ -27,6 +41,10 @@ export class UserService {
 
   getUser(): Observable<IUser | null> {
     return this.user$;
+  }
+
+  getUsers(): Observable<IUser> {
+    return this.apiService.get<IUser>({ url: 'users' });
   }
 
   getSession(): Observable<IUser> {
