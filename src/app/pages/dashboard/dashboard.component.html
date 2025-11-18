@@ -1,26 +1,12 @@
 <section class="mx-auto max-w-7xl px-4 py-8">
   <!-- Header -->
-  <div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-    <div>
-      <h2 class="text-3xl font-bold text-gray-800">Projetos</h2>
-      <p class="text-gray-500 mt-1">Gerencie e acompanhe seus projetos</p>
-    </div>
-    
-    <div class="flex gap-3">
-      <!-- Search Bar -->
-      <div class="relative w-full sm:w-80">
-        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-          </svg>
-        </div>
-        <input 
-          class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition outline-none" 
-          placeholder="Buscar projetos..." 
-          (input)="updateQuery($event.target.value)" 
-        />
+  <div class="mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div>
+        <h2 class="text-3xl font-bold text-gray-800">Projetos</h2>
+        <p class="text-gray-500 mt-1">Gerencie e acompanhe seus projetos</p>
       </div>
-
+      
       <!-- Add Project Button -->
       <button 
         (click)="openAddProjectModal()"
@@ -28,10 +14,73 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
         </svg>
-        <span class="hidden sm:inline">Novo Projeto</span>
+        Novo Projeto
       </button>
     </div>
+
+    <!-- Filtros -->
+    <div class="space-y-4">
+      <!-- Barra de busca -->
+      <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </div>
+        <input 
+          type="text"
+          [value]="query()"
+          (input)="updateQuery($any($event.target).value)"
+          placeholder="Buscar por nome, descrição, categoria ou responsável..."
+          class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition outline-none" />
+      </div>
+
+      <!-- Filtros de Status e Categoria -->
+      <div class="flex flex-wrap gap-3 items-center">
+        <!-- Filtro de Status -->
+        <div class="flex items-center gap-2">
+          <label class="text-sm font-medium text-gray-700">Status:</label>
+          <select 
+            [value]="statusFilter()"
+            (change)="updateStatusFilter($any($event.target).value)"
+            class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+            <option value="all">Todos</option>
+            <option value="active">Ativo</option>
+            <option value="in_progress">Em andamento</option>
+            <option value="done">Concluído</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+
+        <!-- Filtro de Categoria -->
+        <div class="flex items-center gap-2">
+          <label class="text-sm font-medium text-gray-700">Categoria:</label>
+          <select 
+            [value]="categoryFilter()"
+            (change)="updateCategoryFilter($any($event.target).value)"
+            class="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+            <option value="all">Todas</option>
+            <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
+          </select>
+        </div>
+
+        <!-- Botão Limpar Filtros -->
+        <button
+          *ngIf="query() || statusFilter() !== 'all' || categoryFilter() !== 'all'"
+          (click)="clearFilters()"
+          class="ml-auto px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition">
+          Limpar filtros
+        </button>
+
+        <!-- Contador de projetos -->
+        <div class="text-sm text-gray-500">
+          <span class="font-medium">{{ filtered().length }}</span> de 
+          <span class="font-medium">{{ projects().length }}</span> projeto(s)
+        </div>
+      </div>
+    </div>
   </div>
+
 
   <!-- Projects Grid -->
   <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -98,6 +147,16 @@
                 </svg>
                 Excluir Projeto
               </button>
+              <button 
+                (click)="openFinalizeProjectModal(p, $event)"
+                *ngIf="p.status !== 'done' && p.status !== 'cancelado'"
+                class="w-full flex items-center gap-3 px-4 py-2 text-sm text-green-600 hover:bg-green-50 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Finalizar Projeto
+              </button>
+
             </div>
           </div>
         </div>
@@ -466,6 +525,43 @@
         (click)="confirmDeleteProject()"
         class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium">
         Excluir Projeto
+      </button>
+    </div>
+  </div>
+</app-modal>
+
+<app-modal [isOpen]="isFinalizeProjectModalOpen" title="Finalizar Projeto" (closed)="closeFinalizeProjectModal()">
+  <div class="space-y-4">
+    <div class="flex items-start gap-4">
+      <div class="flex-shrink-0 w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+      </div>
+      <div class="flex-1">
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">Confirmar finalização</h3>
+        <p class="text-sm text-gray-600 mb-4">
+          Você está prestes a finalizar o projeto <strong>"{{selectedProject?.name}}"</strong>. 
+          O status será alterado para "Concluído" e todas as tarefas pendentes serão consideradas finalizadas.
+        </p>
+        <p class="text-sm text-gray-500">
+          Esta ação pode ser revertida posteriormente se necessário.
+        </p>
+      </div>
+    </div>
+
+    <div class="flex gap-3 pt-4">
+      <button 
+        type="button"
+        (click)="closeFinalizeProjectModal()"
+        class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium">
+        Cancelar
+      </button>
+      <button 
+        type="button"
+        (click)="confirmFinalizeProject()"
+        class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+        Finalizar Projeto
       </button>
     </div>
   </div>

@@ -35,33 +35,85 @@
       *ngFor="let user of filteredUsers"
       class="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all duration-200 group">
       
-      <!-- Avatar -->
-      <div class="flex items-start gap-4 mb-4">
-        <div class="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
-          {{user.fullName.charAt(0).toUpperCase()}}
+      <!-- Header with Avatar and Menu -->
+      <div class="flex items-start justify-between gap-4 mb-4">
+        <div class="flex items-start gap-4 flex-1 min-w-0">
+          <div class="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+            {{user.fullName.charAt(0).toUpperCase()}}
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-semibold text-gray-800 group-hover:text-blue-600 transition truncate">
+              {{user.fullName}}
+            </h3>
+            <p class="text-sm text-gray-500 truncate">{{user.email}}</p>
+          </div>
         </div>
-        <div class="flex-1 min-w-0">
-          <h3 class="font-semibold text-gray-800 group-hover:text-blue-600 transition truncate">
-            {{user.fullName}}
-          </h3>
-          <p class="text-sm text-gray-500 truncate">{{user.email}}</p>
+
+        <!-- Options Menu Button -->
+        <div class="relative">
+          <button
+            (click)="toggleUserMenu(user.id, $event)"
+            class="text-gray-400 hover:text-gray-600 transition p-1 rounded-lg hover:bg-gray-100">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
+            </svg>
+          </button>
+          
+          <!-- Dropdown Menu -->
+          <div 
+            *ngIf="openMenuId === user.id"
+            class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+            <button 
+              (click)="openEditUserModal(user)"
+              class="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+              </svg>
+              Editar Usuário
+            </button>
+            <button 
+              *ngIf="user.isActive"
+              (click)="openDeactivateUserModal(user)"
+              class="w-full flex items-center gap-3 px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+              </svg>
+              Desativar
+            </button>
+            <button 
+              *ngIf="!user.isActive"
+              (click)="openReactivateUserModal(user)"
+              class="w-full flex items-center gap-3 px-4 py-2 text-sm text-green-600 hover:bg-green-50 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Reativar
+            </button>
+            <button 
+              (click)="openDeleteUserModal(user)"
+              class="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+              </svg>
+              Excluir Usuário
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Role Badge -->
+      <!-- Role Badge and Status -->
       <div class="flex items-center justify-between pt-3 border-t border-gray-100">
         <span 
           class="text-xs font-medium px-2.5 py-1 rounded-full border"
-          [ngClass]="getRoleBadgeClass(user.role)">
-          {{getRoleLabel(user.role)}}
+          [ngClass]="getRoleBadgeClass(user.roles[0].role.name)">
+          {{getRoleLabel(user.roles[0].role.name)}}
         </span>
-        <button 
-          (click)="openEditUserModal(user)"
-          class="text-gray-400 hover:text-blue-600 transition">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-          </svg>
-        </button>
+        <span 
+          *ngIf="user.isActive !== undefined"
+          class="text-xs font-medium px-2.5 py-1 rounded-full"
+          [ngClass]="user.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+          {{user.isActive ? 'Ativo' : 'Inativo'}}
+        </span>
       </div>
     </div>
   </div>
@@ -82,25 +134,35 @@
 <app-modal [isOpen]="isAddUserModalOpen" title="Novo Usuário" (closed)="closeAddUserModal()">
   <form [formGroup]="userForm" (ngSubmit)="submitUser()" class="space-y-4">
     <div>
-      <label class="text-sm font-medium text-gray-700 block mb-1">Nome completo</label>
+      <label class="text-sm font-medium text-gray-700 block mb-1">Nome completo <span class="text-red-500">*</span></label>
       <input 
         formControlName="fullName"
         type="text"
         placeholder="Digite o nome completo"
+        [class.border-red-500]="userForm.get('fullName')?.invalid && userForm.get('fullName')?.touched"
         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
+      <p *ngIf="userForm.get('fullName')?.invalid && userForm.get('fullName')?.touched" 
+         class="mt-1 text-xs text-red-600">
+        O nome é obrigatório
+      </p>
     </div>
 
     <div>
-      <label class="text-sm font-medium text-gray-700 block mb-1">Email</label>
+      <label class="text-sm font-medium text-gray-700 block mb-1">Email <span class="text-red-500">*</span></label>
       <input 
         formControlName="email"
         type="email"
         placeholder="usuario@exemplo.com"
+        [class.border-red-500]="userForm.get('email')?.invalid && userForm.get('email')?.touched"
         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
+      <p *ngIf="userForm.get('email')?.invalid && userForm.get('email')?.touched" 
+         class="mt-1 text-xs text-red-600">
+        Email válido é obrigatório
+      </p>
     </div>
 
     <div>
-      <label class="text-sm font-medium text-gray-700 block mb-1">Função</label>
+      <label class="text-sm font-medium text-gray-700 block mb-1">Função <span class="text-red-500">*</span></label>
       <select 
         formControlName="role"
         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
@@ -119,6 +181,9 @@
       </button>
       <button 
         type="submit"
+        [disabled]="userForm.invalid"
+        [class.opacity-50]="userForm.invalid"
+        [class.cursor-not-allowed]="userForm.invalid"
         class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
         Criar Usuário
       </button>
@@ -130,25 +195,35 @@
 <app-modal [isOpen]="isEditUserModalOpen" title="Editar Usuário" (closed)="closeEditUserModal()">
   <form [formGroup]="userForm" (ngSubmit)="updateUser()" class="space-y-4">
     <div>
-      <label class="text-sm font-medium text-gray-700 block mb-1">Nome completo</label>
+      <label class="text-sm font-medium text-gray-700 block mb-1">Nome completo <span class="text-red-500">*</span></label>
       <input 
         formControlName="fullName"
         type="text"
         placeholder="Digite o nome completo"
+        [class.border-red-500]="userForm.get('fullName')?.invalid && userForm.get('fullName')?.touched"
         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
+      <p *ngIf="userForm.get('fullName')?.invalid && userForm.get('fullName')?.touched" 
+         class="mt-1 text-xs text-red-600">
+        O nome é obrigatório
+      </p>
     </div>
 
     <div>
-      <label class="text-sm font-medium text-gray-700 block mb-1">Email</label>
+      <label class="text-sm font-medium text-gray-700 block mb-1">Email <span class="text-red-500">*</span></label>
       <input 
         formControlName="email"
         type="email"
         placeholder="usuario@exemplo.com"
+        [class.border-red-500]="userForm.get('email')?.invalid && userForm.get('email')?.touched"
         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
+      <p *ngIf="userForm.get('email')?.invalid && userForm.get('email')?.touched" 
+         class="mt-1 text-xs text-red-600">
+        Email válido é obrigatório
+      </p>
     </div>
 
     <div>
-      <label class="text-sm font-medium text-gray-700 block mb-1">Função</label>
+      <label class="text-sm font-medium text-gray-700 block mb-1">Função <span class="text-red-500">*</span></label>
       <select 
         formControlName="role"
         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
@@ -167,9 +242,116 @@
       </button>
       <button 
         type="submit"
+        [disabled]="userForm.invalid"
+        [class.opacity-50]="userForm.invalid"
+        [class.cursor-not-allowed]="userForm.invalid"
         class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
         Salvar Alterações
       </button>
     </div>
   </form>
+</app-modal>
+
+<!-- Delete User Modal -->
+<app-modal [isOpen]="isDeleteUserModalOpen" title="Excluir Usuário" (closed)="closeDeleteUserModal()">
+  <div class="space-y-4">
+    <div class="flex items-start gap-4">
+      <div class="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+      </div>
+      <div class="flex-1">
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">Tem certeza?</h3>
+        <p class="text-sm text-gray-600 mb-4">
+          Você está prestes a excluir o usuário <strong>"{{selectedUser?.fullName}}"</strong>. 
+          Esta ação não pode ser desfeita.
+        </p>
+      </div>
+    </div>
+
+    <div class="flex gap-3 pt-4">
+      <button 
+        type="button"
+        (click)="closeDeleteUserModal()"
+        class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium">
+        Cancelar
+      </button>
+      <button 
+        type="button"
+        (click)="confirmDeleteUser()"
+        class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium">
+        Excluir Usuário
+      </button>
+    </div>
+  </div>
+</app-modal>
+
+<!-- Deactivate User Modal -->
+<app-modal [isOpen]="isDeactivateUserModalOpen" title="Desativar Usuário" (closed)="closeDeactivateUserModal()">
+  <div class="space-y-4">
+    <div class="flex items-start gap-4">
+      <div class="flex-shrink-0 w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+        <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+      </div>
+      <div class="flex-1">
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">Desativar usuário?</h3>
+        <p class="text-sm text-gray-600 mb-4">
+          O usuário <strong>"{{selectedUser?.fullName}}"</strong> será desativado e não poderá mais acessar o sistema. 
+          Você pode reativá-lo posteriormente.
+        </p>
+      </div>
+    </div>
+
+    <div class="flex gap-3 pt-4">
+      <button 
+        type="button"
+        (click)="closeDeactivateUserModal()"
+        class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium">
+        Cancelar
+      </button>
+      <button 
+        type="button"
+        (click)="confirmDeactivateUser()"
+        class="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium">
+        Desativar
+      </button>
+    </div>
+  </div>
+</app-modal>
+
+<!-- Reactivate User Modal -->
+<app-modal [isOpen]="isReactivateUserModalOpen" title="Reativar Usuário" (closed)="closeReactivateUserModal()">
+  <div class="space-y-4">
+    <div class="flex items-start gap-4">
+      <div class="flex-shrink-0 w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+      </div>
+      <div class="flex-1">
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">Reativar usuário?</h3>
+        <p class="text-sm text-gray-600 mb-4">
+          O usuário <strong>"{{selectedUser?.fullName}}"</strong> será reativado e poderá acessar o sistema novamente.
+        </p>
+      </div>
+    </div>
+
+    <div class="flex gap-3 pt-4">
+      <button 
+        type="button"
+        (click)="closeReactivateUserModal()"
+        class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium">
+        Cancelar
+      </button>
+      <button 
+        type="button"
+        (click)="confirmReactivateUser()"
+        class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+        Reativar
+      </button>
+    </div>
+  </div>
 </app-modal>

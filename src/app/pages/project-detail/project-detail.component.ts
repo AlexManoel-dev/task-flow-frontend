@@ -1,7 +1,7 @@
 import { Component, OnInit, HostListener, signal, computed } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { NgFor, NgIf, NgClass } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, Validators, FormsModule } from '@angular/forms';
 import { DataService } from '../../services/data.service';
 import { mockUsers } from '../../lib/mock-data';
 import { ModalComponent } from '../../shared/modal/modal.component';
@@ -13,37 +13,44 @@ import { UserService } from '../../services/user.service';
 @Component({
   selector: 'app-project-detail',
   standalone: true,
-  imports: [NgFor, NgIf, NgClass, ReactiveFormsModule, ModalComponent],
+  imports: [NgFor, NgIf, NgClass, ReactiveFormsModule, FormsModule, ModalComponent],
   templateUrl: './project-detail.component.html'
 })
 export class ProjectDetailComponent implements OnInit {
   projectId = this.route.snapshot.paramMap.get('id')!;
   project: any;
-  tasks = signal<any[]>([]); // 👈 Agora é signal
-  query = signal(''); // 👈 Signal para busca
-  statusFilter = signal<string>('all'); // 👈 Signal para filtro de status
-  priorityFilter = signal<string>('all'); // 👈 Signal para filtro de prioridade
+  tasks = signal<any[]>([]);
+  query = signal('');
+  statusFilter = signal<string>('all');
+  priorityFilter = signal<string>('all');
   users: any = [];
   taskTypes = ['feature', 'fix', 'refactor', 'docs', 'test', 'others'];
   isAddTaskModalOpen = false;
   isEditTaskModalOpen = false;
   isDeleteTaskModalOpen = false;
+  isTaskDetailModalOpen = false;
   selectedTask: any = null;
   openStatusDropdown: string | null = null;
   currentUser: any;
+  activeTab: 'comments' | 'attachments' = 'comments'; // Nova propriedade
+  
+  // Comentários e Anexos
+  comments = signal<any[]>([]);
+  attachments = signal<any[]>([]);
+  newComment = '';
+  selectedFiles: File[] = [];
   
   taskForm = this.fb.group({
     title: ['', Validators.required],
     description: [''],
-    status: [''],
-    priority: [''],
-    startDate: [''],
-    dueDate: [''],
-    taskType: [''],
-    assigneeId: [2],
+    status: ['', Validators.required],
+    priority: ['', Validators.required],
+    startDate: ['', Validators.required],
+    dueDate: ['', Validators.required],
+    taskType: ['', Validators.required],
+    assigneeId: [null, Validators.required],
   });
 
-  // 👇 Computed que filtra as tarefas
   filteredTasks = computed(() => {
     const q = this.query().toLowerCase();
     const statusF = this.statusFilter();
@@ -51,16 +58,12 @@ export class ProjectDetailComponent implements OnInit {
     const tasksList = this.tasks();
 
     return tasksList.filter((task: any) => {
-      // Filtro de texto
       const matchesQuery = !q || 
         task.title.toLowerCase().includes(q) ||
         (task.description && task.description.toLowerCase().includes(q)) ||
         (task.assignee?.fullName && task.assignee.fullName.toLowerCase().includes(q));
 
-      // Filtro de status
       const matchesStatus = statusF === 'all' || task.normalizedStatus === statusF;
-
-      // Filtro de prioridade
       const matchesPriority = priorityF === 'all' || task.priority === priorityF;
 
       return matchesQuery && matchesStatus && matchesPriority;
@@ -119,7 +122,6 @@ export class ProjectDetailComponent implements OnInit {
     return assignee ? assignee.fullName : 'Não atribuído';
   }
 
-  // Função para normalizar o status do backend para o formato do frontend
   normalizeStatus(status: string): 'todo' | 'in_progress' | 'done' {
     const statusMap: Record<string, 'todo' | 'in_progress' | 'done'> = {
       'A fazer': 'todo',
@@ -144,7 +146,6 @@ export class ProjectDetailComponent implements OnInit {
     return labels[status] || status;
   }
 
-  // Traduz o tipo de prioridade
   getPriorityLabel(priority: string): string {
     const labels: Record<string, string> = {
       'low': 'Baixa',
@@ -162,6 +163,18 @@ export class ProjectDetailComponent implements OnInit {
     return date?.split('-').reverse().join('-');
   }
 
+  formatDateTime(date: string): string {
+    if (!date) return '';
+    const d = new Date(date);
+    return d.toLocaleString('pt-BR', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
   openAddTaskModal(): void {
     this.getUsers();
     this.isAddTaskModalOpen = true;
@@ -172,7 +185,7 @@ export class ProjectDetailComponent implements OnInit {
     this.taskForm.reset({ 
       priority: 'medium',
       status: 'A fazer',
-      assigneeId: 2
+      assigneeId: null
     });
   }
 
@@ -220,12 +233,11 @@ export class ProjectDetailComponent implements OnInit {
     this.taskService.getTasks(Number(this.projectId)).subscribe({
       next: (res) => {
         console.log('tasks', res);
-        // Mapeia os dados do backend para incluir o status normalizado
         const tasksList = res.map((task: any) => ({
           ...task,
           normalizedStatus: this.normalizeStatus(task.status)
         }));
-        this.tasks.set(tasksList); // 👈 Atualiza o signal
+        this.tasks.set(tasksList);
       },
       error: (err) => console.error('Erro ao buscar tarefas', err),
     });
@@ -266,7 +278,6 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   updateTaskStatus(taskId: number | string, newStatus: 'todo' | 'in_progress' | 'done'): void {
-    // Converte o status para o formato do backend
     const statusMap: Record<string, string> = {
       'todo': 'A fazer',
       'in_progress': 'Em progresso',
@@ -284,6 +295,7 @@ export class ProjectDetailComponent implements OnInit {
         this.openStatusDropdown = null;
         this.toastr.success('Status atualizado!', 'Sucesso!');
         this.getTasks();
+        this.findProject();
       },
       error: (err) => {
         console.error('Erro ao atualizar status', err);
@@ -297,7 +309,6 @@ export class ProjectDetailComponent implements OnInit {
     console.log('Abrindo modal de edição para:', task);
     this.selectedTask = task;
     
-    // Formata as datas para o formato do input date (YYYY-MM-DD)
     const formatDateForInput = (dateString: string | null) => {
       if (!dateString) return '';
       return dateString.split('T')[0];
@@ -325,7 +336,7 @@ export class ProjectDetailComponent implements OnInit {
     this.taskForm.reset({ 
       priority: 'medium',
       status: 'A fazer',
-      assigneeId: 2
+      assigneeId: null
     });
   }
 
@@ -379,5 +390,148 @@ export class ProjectDetailComponent implements OnInit {
         this.toastr.error('Erro ao excluir tarefa', 'Erro!');
       }
     });
+  }
+
+  // ========== MODAL DE DETALHES DA TAREFA ==========
+  openTaskDetailModal(task: any): void {
+    this.selectedTask = task;
+    this.activeTab = 'comments'; // Reset para tab de comentários
+    this.isTaskDetailModalOpen = true;
+    this.loadTaskComments(task.id);
+    this.loadTaskAttachments(task.id);
+  }
+
+  closeTaskDetailModal(): void {
+    this.isTaskDetailModalOpen = false;
+    this.selectedTask = null;
+    this.newComment = '';
+    this.selectedFiles = [];
+    this.comments.set([]);
+    this.attachments.set([]);
+    this.activeTab = 'comments';
+  }
+
+  // ========== COMENTÁRIOS ==========
+  loadTaskComments(taskId: number): void {
+    // this.taskService.getComments(taskId).subscribe({
+    //   next: (res) => {
+    //     console.log('comments', res);
+    //     this.comments.set(res);
+    //   },
+    //   error: (err) => {
+    //     console.error('Erro ao buscar comentários', err);
+    //   }
+    // });
+  }
+
+  addComment(): void {
+    if (!this.newComment.trim() || !this.selectedTask) return;
+
+    const payload = {
+      content: this.newComment,
+      taskId: this.selectedTask.id,
+      userId: this.currentUser.id
+    };
+
+    // this.taskService.createComment(this.selectedTask.id, payload).subscribe({
+    //   next: (res) => {
+    //     this.toastr.success('Comentário adicionado!', 'Sucesso!');
+    //     this.newComment = '';
+    //     this.loadTaskComments(this.selectedTask.id);
+    //   },
+    //   error: (err) => {
+    //     console.error('Erro ao adicionar comentário', err);
+    //     this.toastr.error('Erro ao adicionar comentário', 'Erro!');
+    //   }
+    // });
+  }
+
+  deleteComment(commentId: number): void {
+    // this.taskService.deleteComment(commentId).subscribe({
+    //   next: () => {
+    //     this.toastr.success('Comentário excluído!', 'Sucesso!');
+    //     this.loadTaskComments(this.selectedTask.id);
+    //   },
+    //   error: (err) => {
+    //     console.error('Erro ao excluir comentário', err);
+    //     this.toastr.error('Erro ao excluir comentário', 'Erro!');
+    //   }
+    // });
+  }
+
+  // ========== ANEXOS ==========
+  loadTaskAttachments(taskId: number): void {
+    // this.taskService.getAttachments(taskId).subscribe({
+    //   next: (res) => {
+    //     console.log('attachments', res);
+    //     this.attachments.set(res);
+    //   },
+    //   error: (err) => {
+    //     console.error('Erro ao buscar anexos', err);
+    //   }
+    // });
+  }
+
+  onFileSelect(event: any): void {
+    const files = event.target.files;
+    if (files) {
+      this.selectedFiles = Array.from(files);
+    }
+  }
+
+  uploadAttachments(): void {
+    if (this.selectedFiles.length === 0 || !this.selectedTask) return;
+
+    const formData = new FormData();
+    this.selectedFiles.forEach(file => {
+      formData.append('files', file);
+    });
+
+    // this.taskService.uploadAttachments(this.selectedTask.id, formData).subscribe({
+    //   next: (res) => {
+    //     this.toastr.success('Anexos enviados!', 'Sucesso!');
+    //     this.selectedFiles = [];
+    //     this.loadTaskAttachments(this.selectedTask.id);
+    //   },
+    //   error: (err) => {
+    //     console.error('Erro ao enviar anexos', err);
+    //     this.toastr.error('Erro ao enviar anexos', 'Erro!');
+    //   }
+    // });
+  }
+
+  deleteAttachment(attachmentId: number): void {
+    // this.taskService.deleteAttachment(attachmentId).subscribe({
+    //   next: () => {
+    //     this.toastr.success('Anexo excluído!', 'Sucesso!');
+    //     this.loadTaskAttachments(this.selectedTask.id);
+    //   },
+    //   error: (err) => {
+    //     console.error('Erro ao excluir anexo', err);
+    //     this.toastr.error('Erro ao excluir anexo', 'Erro!');
+    //   }
+    // });
+  }
+
+  downloadAttachment(attachment: any): void {
+    window.open(attachment.url, '_blank');
+  }
+
+  getFileIcon(fileName: string): string {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    
+    const iconMap: Record<string, string> = {
+      'pdf': 'M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z',
+      'doc': 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+      'docx': 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+      'xls': 'M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z',
+      'xlsx': 'M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z',
+      'jpg': 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
+      'jpeg': 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
+      'png': 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
+      'zip': 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4'
+    };
+
+    return iconMap[extension || ''] || 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z';
   }
 }

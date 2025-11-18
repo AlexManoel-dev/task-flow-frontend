@@ -129,7 +129,8 @@
     <div class="space-y-3">
       <div 
         *ngFor="let t of filteredTasks()" 
-        class="group rounded-lg border p-4 hover:shadow-md transition-all duration-200"
+        (click)="openTaskDetailModal(t)"
+        class="group rounded-lg border p-4 hover:shadow-md transition-all duration-200 cursor-pointer"
         [ngClass]="{
           'bg-green-50 border-green-200': t.normalizedStatus === 'done',
           'bg-blue-50 border-blue-200': t.normalizedStatus === 'in_progress',
@@ -346,16 +347,220 @@
   </div>
 </section>
 
+<!-- Modal: Detalhes da Tarefa - Layout Horizontal Responsivo -->
+<app-modal [isOpen]="isTaskDetailModalOpen" [title]="selectedTask?.title || 'Detalhes da Tarefa'" (closed)="closeTaskDetailModal()">
+  <div class="space-y-4" *ngIf="selectedTask">
+    <!-- Task Info - Compacta -->
+    <div class="space-y-3">
+      <!-- Tags -->
+      <div class="flex flex-wrap items-center gap-2">
+        <span 
+          class="text-xs font-medium px-2 py-1 rounded-full"
+          [ngClass]="{
+            'bg-green-100 text-green-700 border border-green-300': selectedTask.normalizedStatus === 'done',
+            'bg-blue-100 text-blue-700 border border-blue-300': selectedTask.normalizedStatus === 'in_progress',
+            'bg-gray-100 text-gray-700 border border-gray-300': selectedTask.normalizedStatus === 'todo'
+          }">
+          {{getStatusLabel(selectedTask.status)}}
+        </span>
+        <span 
+          class="text-xs font-medium px-2 py-1 rounded-full"
+          [ngClass]="{
+            'bg-red-100 text-red-700': selectedTask.priority === 'high',
+            'bg-yellow-100 text-yellow-700': selectedTask.priority === 'medium',
+            'bg-gray-100 text-gray-700': selectedTask.priority === 'low'
+          }">
+          {{getPriorityLabel(selectedTask.priority)}}
+        </span>
+        <span class="text-xs font-medium px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">
+          {{selectedTask.taskType}}
+        </span>
+      </div>
+
+      <!-- Description -->
+      <p class="text-sm text-gray-600 line-clamp-2">{{selectedTask.description || 'Sem descrição'}}</p>
+
+      <!-- Meta Info - Grid -->
+      <div class="grid grid-cols-2 gap-3 text-xs text-gray-600">
+        <div class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+          </svg>
+          <span class="truncate">{{selectedTask.assignee?.fullName || getAssigneeName(selectedTask.assigneeId)}}</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+          </svg>
+          <span class="truncate">{{formatDate(selectedTask.dueDate)}}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="border-t pt-4">
+      <div class="flex gap-2 border-b mb-4">
+        <button 
+          (click)="activeTab = 'comments'"
+          class="px-3 py-2 text-sm font-medium border-b-2 transition"
+          [ngClass]="{
+            'border-blue-600 text-blue-600': activeTab === 'comments',
+            'border-transparent text-gray-500 hover:text-gray-700': activeTab !== 'comments'
+          }">
+          💬 ({{comments().length}})
+        </button>
+        <button 
+          (click)="activeTab = 'attachments'"
+          class="px-3 py-2 text-sm font-medium border-b-2 transition"
+          [ngClass]="{
+            'border-blue-600 text-blue-600': activeTab === 'attachments',
+            'border-transparent text-gray-500 hover:text-gray-700': activeTab !== 'attachments'
+          }">
+          📎 ({{attachments().length}})
+        </button>
+      </div>
+
+      <!-- Comments Tab -->
+      <div *ngIf="activeTab === 'comments'" class="space-y-3">
+        <!-- Add Comment - Compacto -->
+        <div class="space-y-2">
+          <textarea
+            [(ngModel)]="newComment"
+            placeholder="Escreva um comentário..."
+            rows="2"
+            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"></textarea>
+          <button
+            (click)="addComment()"
+            [disabled]="!newComment.trim()"
+            class="w-full sm:w-auto px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+            Adicionar
+          </button>
+        </div>
+
+        <!-- Comments List - Scroll otimizado -->
+        <div class="space-y-2 max-h-64 overflow-y-auto">
+          <div *ngFor="let comment of comments()" class="flex gap-2 p-2.5 bg-gray-50 rounded-lg">
+            <img 
+              [src]="'https://ui-avatars.com/api/?name=' + (comment.user?.fullName || 'User') + '&background=4F46E5&color=fff&size=32'" 
+              class="w-7 h-7 rounded-full flex-shrink-0">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-start justify-between gap-2 mb-0.5">
+                <span class="text-xs font-medium text-gray-800 truncate">{{comment.user?.fullName || 'Usuário'}}</span>
+                <span class="text-xs text-gray-500 flex-shrink-0">{{formatDateTime(comment.createdAt)}}</span>
+              </div>
+              <p class="text-sm text-gray-600 break-words">{{comment.content}}</p>
+              <button
+                *ngIf="comment.userId === currentUser.id"
+                (click)="deleteComment(comment.id)"
+                class="mt-1 text-xs text-red-600 hover:text-red-700 hover:underline">
+                Excluir
+              </button>
+            </div>
+          </div>
+          <div *ngIf="comments().length === 0" class="text-center py-8 text-gray-400">
+            <svg class="w-10 h-10 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+            </svg>
+            <p class="text-sm">Sem comentários</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attachments Tab -->
+      <div *ngIf="activeTab === 'attachments'" class="space-y-3">
+        <!-- Upload - Horizontal e Compacto -->
+        <div class="space-y-2">
+          <div class="flex gap-2">
+            <label class="flex-1 flex items-center justify-center gap-2 px-3 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition cursor-pointer">
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+              </svg>
+              <span class="text-xs text-gray-600">Selecionar</span>
+              <input 
+                type="file" 
+                multiple 
+                (change)="onFileSelect($event)"
+                class="hidden">
+            </label>
+            <button
+              (click)="uploadAttachments()"
+              [disabled]="selectedFiles.length === 0"
+              class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+              Enviar
+            </button>
+          </div>
+          
+          <!-- Selected Files - Horizontal Scroll -->
+          <div *ngIf="selectedFiles.length > 0" class="flex gap-2 overflow-x-auto pb-1">
+            <div *ngFor="let file of selectedFiles" class="flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs whitespace-nowrap flex-shrink-0">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <span class="max-w-[100px] truncate">{{file.name}}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Attachments List - Grid para melhor uso do espaço -->
+        <div class="grid gap-2 max-h-64 overflow-y-auto">
+          <div *ngFor="let attachment of attachments()" 
+               class="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition group">
+            <div class="flex items-center gap-2 flex-1 min-w-0">
+              <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="getFileIcon(attachment.fileName)"></path>
+              </svg>
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-medium text-gray-800 truncate">{{attachment.fileName}}</p>
+                <p class="text-xs text-gray-500">{{formatDateTime(attachment.uploadedAt)}}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                (click)="downloadAttachment(attachment)"
+                class="p-1 text-blue-600 hover:bg-blue-50 rounded transition"
+                title="Download">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+              </button>
+              <button
+                *ngIf="attachment.uploadedBy === currentUser.id"
+                (click)="deleteAttachment(attachment.id)"
+                class="p-1 text-red-600 hover:bg-red-50 rounded transition"
+                title="Excluir">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div *ngIf="attachments().length === 0" class="text-center py-8 text-gray-400">
+            <svg class="w-10 h-10 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+            </svg>
+            <p class="text-sm">Sem anexos</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</app-modal>
+
 <!-- Add Task Modal -->
 <app-modal [isOpen]="isAddTaskModalOpen" title="Nova Tarefa" (closed)="closeAddTaskModal()">
   <form [formGroup]="taskForm" (ngSubmit)="submitTask()" class="space-y-4">
     <div>
-      <label class="text-sm font-medium text-gray-700 block mb-1">Título</label>
+      <label class="text-sm font-medium text-gray-700 block mb-1">Título <span class="text-red-500">*</span></label>
       <input 
         formControlName="title"
+        [class.border-red-500]="taskForm.get('title')?.invalid && taskForm.get('title')?.touched"
         type="text"
         placeholder="Nome da tarefa"
         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
+        <p *ngIf="taskForm.get('title')?.invalid && taskForm.get('title')?.touched" 
+          class="mt-1 text-xs text-red-600">
+          O título é obrigatório
+        </p>
     </div>
 
     <div>
@@ -368,53 +573,78 @@
     </div>
 
     <div>
-      <label class="text-sm font-medium text-gray-700 block mb-1">Tipo da tarefa</label>
+      <label class="text-sm font-medium text-gray-700 block mb-1">Tipo da tarefa <span class="text-red-500">*</span></label>
       <select 
         formControlName="taskType"
+        [class.border-red-500]="taskForm.get('taskType')?.invalid && taskForm.get('taskType')?.touched"
         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
         <option value="">Selecione</option>
         <option *ngFor="let taskType of taskTypes" [value]="taskType">{{ taskType }}</option>
       </select>
+      <p *ngIf="taskForm.get('taskType')?.invalid && taskForm.get('taskType')?.touched" 
+          class="mt-1 text-xs text-red-600">
+          O tipo da tarefa é obrigatório
+        </p>
     </div>
 
     <div class="grid grid-cols-2 gap-4">
       <div>
-        <label class="text-sm font-medium text-gray-700 block mb-1">Responsável</label>
+        <label class="text-sm font-medium text-gray-700 block mb-1">Responsável <span class="text-red-500">*</span></label>
         <select 
           formControlName="assigneeId"
+          [class.border-red-500]="taskForm.get('assigneeId')?.invalid && taskForm.get('assigneeId')?.touched"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
           <option value="">Selecione</option>
           <option *ngFor="let user of users" [value]="user.userId">{{ user.user.fullName }}</option>
         </select>
+        <p *ngIf="taskForm.get('assigneeId')?.invalid && taskForm.get('assigneeId')?.touched" 
+          class="mt-1 text-xs text-red-600">
+          O responsável é obrigatório
+        </p>
       </div>
 
       <div>
-        <label class="text-sm font-medium text-gray-700 block mb-1">Prioridade</label>
+        <label class="text-sm font-medium text-gray-700 block mb-1">Prioridade <span class="text-red-500">*</span></label>
         <select 
           formControlName="priority"
+          [class.border-red-500]="taskForm.get('priority')?.invalid && taskForm.get('priority')?.touched"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
           <option value="low">Baixa</option>
           <option value="medium">Média</option>
           <option value="high">Alta</option>
         </select>
+        <p *ngIf="taskForm.get('priority')?.invalid && taskForm.get('priority')?.touched" 
+          class="mt-1 text-xs text-red-600">
+          A prioridade é obrigatória
+        </p>
       </div>
     </div>
 
     <div class="grid grid-cols-2 gap-4">
       <div>
-        <label class="text-sm font-medium text-gray-700 block mb-1">Data de início</label>
+        <label class="text-sm font-medium text-gray-700 block mb-1">Data de início <span class="text-red-500">*</span></label>
         <input 
           formControlName="startDate"
+          [class.border-red-500]="taskForm.get('startDate')?.invalid && taskForm.get('startDate')?.touched"
           type="date"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
+          <p *ngIf="taskForm.get('startDate')?.invalid && taskForm.get('startDate')?.touched" 
+            class="mt-1 text-xs text-red-600">
+            A data de início é obrigatória
+          </p>
       </div>
       
       <div>
-        <label class="text-sm font-medium text-gray-700 block mb-1">Data de conclusão</label>
+        <label class="text-sm font-medium text-gray-700 block mb-1">Data de conclusão <span class="text-red-500">*</span></label>
         <input 
           formControlName="dueDate"
+          [class.border-red-500]="taskForm.get('endDate')?.invalid && taskForm.get('endDate')?.touched"
           type="date"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
+          <p *ngIf="taskForm.get('endDate')?.invalid && taskForm.get('endDate')?.touched" 
+            class="mt-1 text-xs text-red-600">
+            A data de conclusão é obrigatória
+          </p>
       </div>
     </div>
 
@@ -439,12 +669,17 @@
 <app-modal [isOpen]="isEditTaskModalOpen" title="Editar Tarefa" (closed)="closeEditTaskModal()">
   <form [formGroup]="taskForm" (ngSubmit)="updateTask()" class="space-y-4">
     <div>
-      <label class="text-sm font-medium text-gray-700 block mb-1">Título</label>
+      <label class="text-sm font-medium text-gray-700 block mb-1">Título <span class="text-red-500">*</span></label>
       <input 
         formControlName="title"
+        [class.border-red-500]="taskForm.get('title')?.invalid && taskForm.get('title')?.touched"
         type="text"
         placeholder="Nome da tarefa"
         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
+        <p *ngIf="taskForm.get('title')?.invalid && taskForm.get('title')?.touched" 
+          class="mt-1 text-xs text-red-600">
+          O título é obrigatório
+        </p>
     </div>
 
     <div>
@@ -457,53 +692,78 @@
     </div>
 
     <div>
-      <label class="text-sm font-medium text-gray-700 block mb-1">Tipo da tarefa</label>
+      <label class="text-sm font-medium text-gray-700 block mb-1">Tipo da tarefa <span class="text-red-500">*</span></label>
       <select 
         formControlName="taskType"
+        [class.border-red-500]="taskForm.get('taskType')?.invalid && taskForm.get('taskType')?.touched"
         class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
         <option value="">Selecione</option>
         <option *ngFor="let taskType of taskTypes" [value]="taskType">{{ taskType }}</option>
       </select>
+      <p *ngIf="taskForm.get('taskType')?.invalid && taskForm.get('taskType')?.touched" 
+          class="mt-1 text-xs text-red-600">
+          O tipo da tarefa é obrigatório
+        </p>
     </div>
 
     <div class="grid grid-cols-2 gap-4">
       <div>
-        <label class="text-sm font-medium text-gray-700 block mb-1">Responsável</label>
+        <label class="text-sm font-medium text-gray-700 block mb-1">Responsável <span class="text-red-500">*</span></label>
         <select 
           formControlName="assigneeId"
+          [class.border-red-500]="taskForm.get('assigneeId')?.invalid && taskForm.get('assigneeId')?.touched"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
           <option value="">Selecione</option>
           <option *ngFor="let user of users" [value]="user.userId">{{ user.user.fullName }}</option>
         </select>
+        <p *ngIf="taskForm.get('assigneeId')?.invalid && taskForm.get('assigneeId')?.touched" 
+          class="mt-1 text-xs text-red-600">
+          O responsável é obrigatório
+        </p>
       </div>
 
       <div>
-        <label class="text-sm font-medium text-gray-700 block mb-1">Prioridade</label>
+        <label class="text-sm font-medium text-gray-700 block mb-1">Prioridade <span class="text-red-500">*</span></label>
         <select 
           formControlName="priority"
+          [class.border-red-500]="taskForm.get('priority')?.invalid && taskForm.get('priority')?.touched"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
           <option value="low">Baixa</option>
           <option value="medium">Média</option>
           <option value="high">Alta</option>
         </select>
+        <p *ngIf="taskForm.get('priority')?.invalid && taskForm.get('priority')?.touched" 
+          class="mt-1 text-xs text-red-600">
+          A prioridade é obrigatória
+        </p>
       </div>
     </div>
 
     <div class="grid grid-cols-2 gap-4">
       <div>
-        <label class="text-sm font-medium text-gray-700 block mb-1">Data de início</label>
+        <label class="text-sm font-medium text-gray-700 block mb-1">Data de início <span class="text-red-500">*</span></label>
         <input 
           formControlName="startDate"
+          [class.border-red-500]="taskForm.get('startDate')?.invalid && taskForm.get('startDate')?.touched"
           type="date"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
+          <p *ngIf="taskForm.get('startDate')?.invalid && taskForm.get('startDate')?.touched" 
+            class="mt-1 text-xs text-red-600">
+            A data de início é obrigatória
+          </p>
       </div>
       
       <div>
-        <label class="text-sm font-medium text-gray-700 block mb-1">Data de conclusão</label>
+        <label class="text-sm font-medium text-gray-700 block mb-1">Data de conclusão <span class="text-red-500">*</span></label>
         <input 
           formControlName="dueDate"
+          [class.border-red-500]="taskForm.get('dueDate')?.invalid && taskForm.get('dueDate')?.touched"
           type="date"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
+          <p *ngIf="taskForm.get('dueDate')?.invalid && taskForm.get('dueDate')?.touched" 
+            class="mt-1 text-xs text-red-600">
+            A data de conclusão é obrigatória
+          </p>
       </div>
     </div>
 

@@ -12,10 +12,20 @@ import { AuthLayoutComponent } from './pages/layouts/auth-layout/auth-layout.com
 import { UserProfileComponent } from './pages/user-profile/user-profile.component';
 import { UsersListComponent } from './pages/user-list/user-list.component';
 import { adminGuard } from './guards/admin.guard';
+import { ResetPasswordComponent } from './pages/auth/reset-password.component';
+import { NotFoundComponent } from './pages/not-found/not-found.component';
 
 export const routes: Routes = [
   // { path: '', component: LandingComponent },
-  { path: '', pathMatch: 'full', redirectTo: 'login' },
+  { path: '', pathMatch: 'full', redirectTo: 'welcome' },
+  {
+    path: 'welcome',
+    component: LandingComponent
+  },
+  {
+    path: 'reset-password',
+    component: ResetPasswordComponent
+  },
   {
     path: '',
     component: MainLayoutComponent,
@@ -38,4 +48,5 @@ export const routes: Routes = [
       { path: 'forgot-password', component: ForgotPasswordComponent },
     ]
   },
+  { path: '**', component: NotFoundComponent }
 ];

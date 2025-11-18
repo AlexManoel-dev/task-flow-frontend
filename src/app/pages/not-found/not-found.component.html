@@ -1,0 +1,107 @@
+<section class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 px-4 py-8">
+  <div class="w-full max-w-2xl text-center">
+    
+    <!-- Ilustração 404 -->
+    <div class="mb-8 relative">
+      <!-- Número 404 grande -->
+      <div class="text-[180px] sm:text-[220px] font-bold text-transparent bg-clip-text bg-gradient-to-br from-blue-400 to-purple-600 leading-none select-none">
+        404
+      </div>
+      
+      <!-- Ícone flutuante -->
+      <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+        <div class="animate-bounce">
+          <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white shadow-lg flex items-center justify-center">
+            <svg class="w-10 h-10 sm:w-12 sm:h-12 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conteúdo -->
+    <div class="mb-8">
+      <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 mb-4">
+        Ops! Página não encontrada
+      </h1>
+      <p class="text-gray-600 text-base sm:text-lg mb-2">
+        A página que você está procurando não existe ou foi movida.
+      </p>
+      <p class="text-gray-500 text-sm sm:text-base">
+        Verifique se o endereço está correto ou volte para a página inicial.
+      </p>
+    </div>
+
+    <!-- Card com sugestões -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6 sm:p-8 shadow-lg mb-8 max-w-md mx-auto">
+      <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center justify-center gap-2">
+        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+        </svg>
+        O que você pode fazer?
+      </h3>
+      
+      <div class="space-y-3 text-left">
+        <div class="flex items-start gap-3 text-sm text-gray-700">
+          <svg class="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>Verificar se o endereço está digitado corretamente</span>
+        </div>
+        
+        <div class="flex items-start gap-3 text-sm text-gray-700">
+          <svg class="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>Voltar para a página anterior e tentar novamente</span>
+        </div>
+        
+        <div class="flex items-start gap-3 text-sm text-gray-700">
+          <svg class="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>Retornar para a página inicial do site</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botões de ação -->
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <button 
+        (click)="goBack()"
+        class="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium flex items-center justify-center gap-2 hover:border-gray-400">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        Voltar
+      </button>
+      
+      <button 
+        (click)="goHome()"
+        class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition font-medium flex items-center justify-center gap-2 shadow-lg hover:shadow-xl">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+        </svg>
+        Ir para Início
+      </button>
+    </div>
+
+    <!-- Código de erro -->
+    <div class="mt-8 text-xs text-gray-400">
+      Código de erro: 404 - Página não encontrada
+    </div>
+  </div>
+</section>
+
+<!-- Elementos decorativos de fundo -->
+<div class="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+  <!-- Círculo gradiente 1 -->
+  <div class="absolute -top-40 -left-40 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse"></div>
+  
+  <!-- Círculo gradiente 2 -->
+  <div class="absolute -bottom-40 -right-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse" style="animation-delay: 2s;"></div>
+  
+  <!-- Círculo gradiente 3 -->
+  <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse" style="animation-delay: 4s;"></div>
+</div>

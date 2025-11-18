@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { NgIf } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-forgot-password',
@@ -16,7 +17,10 @@ export class ForgotPasswordComponent {
     email: ['', [Validators.required, Validators.email]]
   });
 
-  constructor(private fb: FormBuilder) {}
+  constructor(
+    private fb: FormBuilder,
+    private authService: AuthService
+  ) {}
 
   get email() {
     return this.forgotPasswordForm.get('email');
@@ -29,11 +33,15 @@ export class ForgotPasswordComponent {
 
     this.isLoading = true;
 
-    // Simula envio de email
-    setTimeout(() => {
-      this.isLoading = false;
-      this.emailSent = true;
-    }, 1500);
+    this.authService.forgotPassword(this.forgotPasswordForm.value.email as string).subscribe({
+      next: (res) => {
+        this.isLoading = false;
+        this.emailSent = true;
+      },
+      error: (err) => {
+        console.log('error', err);
+      }
+    });
   }
 
   backToForm() {

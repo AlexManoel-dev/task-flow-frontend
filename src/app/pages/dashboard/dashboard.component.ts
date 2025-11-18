@@ -1,3 +1,4 @@
+// dashboard.component.ts - CÓDIGO COMPLETO
 import { Component, computed, OnInit, signal, HostListener } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgFor, NgIf, NgClass } from '@angular/common';
@@ -18,12 +19,15 @@ import { UserService } from '../../services/user.service';
 })
 export class DashboardComponent implements OnInit {
   query = signal('');
+  statusFilter = signal<string>('all');
+  categoryFilter = signal<string>('all');
   isAddProjectModalOpen = false;
   isEditProjectModalOpen = false;
   isDeleteProjectModalOpen = false;
+  isFinalizeProjectModalOpen = false;
   openMenuId: string | null = null;
   selectedProject: any = null;
-  projects = signal<any[]>([]); // 👈 Agora é um signal
+  projects = signal<any[]>([]);
   categories: any = [];
   users: any[] = [];
   currentUser: any;
@@ -41,18 +45,30 @@ export class DashboardComponent implements OnInit {
     return this.projectForm.get('memberIds') as FormArray;
   }
 
-  // 👇 Computed que reage aos signals
   filtered = computed(() => {
     const q = this.query().toLowerCase();
+    const statusF = this.statusFilter();
+    const categoryF = this.categoryFilter();
     const projectsList = this.projects();
     
-    if (!q) return projectsList; // Se não tiver busca, retorna todos
-    
-    return projectsList.filter((p: any) => 
-      p.name.toLowerCase().includes(q) || 
-      (p.description && p.description.toLowerCase().includes(q)) ||
-      (p.category?.name && p.category.name.toLowerCase().includes(q))
-    );
+    return projectsList.filter((p: any) => {
+      // Filtro de texto
+      const matchesQuery = !q || 
+        p.name.toLowerCase().includes(q) || 
+        (p.description && p.description.toLowerCase().includes(q)) ||
+        (p.category?.name && p.category.name.toLowerCase().includes(q)) ||
+        (p.manager?.fullName && p.manager.fullName.toLowerCase().includes(q));
+
+      // Filtro de status
+      const normalizedStatus = this.getProjectStatus(p.status);
+      const matchesStatus = statusF === 'all' || normalizedStatus === statusF;
+
+      // Filtro de categoria
+      const matchesCategory = categoryF === 'all' || 
+        (p.categoryId && p.categoryId.toString() === categoryF);
+
+      return matchesQuery && matchesStatus && matchesCategory;
+    });
   });
 
   constructor(
@@ -65,6 +81,7 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.getProjects();
+    this.getCategories();
     this.userService.getUser().subscribe({
       next: (res) => {
         this.currentUser = res;
@@ -80,14 +97,36 @@ export class DashboardComponent implements OnInit {
     this.openMenuId = null;
   }
 
+  updateQuery(value: string) {
+    this.query.set(value);
+  }
+
+  updateStatusFilter(value: string): void {
+    this.statusFilter.set(value);
+  }
+
+  updateCategoryFilter(value: string): void {
+    this.categoryFilter.set(value);
+  }
+
+  clearFilters(): void {
+    this.query.set('');
+    this.statusFilter.set('all');
+    this.categoryFilter.set('all');
+  }
+
   getUsers(type: 'create' | 'update'): void {
     this.userService.getUsers().subscribe({
       next: (res: any) => {
-        let blockedIds;
+        let blockedIds: any;
         if (type == 'create') {
           blockedIds = [this.currentUser.id, 1];
-        } else {
+        } else if (type == 'update'){
           blockedIds = [1];
+        }
+        
+        if(this.currentUser.id === 1) {
+          blockedIds = [];
         }
 
         this.users = res.filter((user: any) => 
@@ -115,7 +154,7 @@ export class DashboardComponent implements OnInit {
           endDate: this.formatDate(project?.endDate)
         }));
 
-        this.projects.set(projectsList); // 👈 Atualiza o signal
+        this.projects.set(projectsList);
 
         console.log('projetos', this.projects());
       },
@@ -130,16 +169,11 @@ export class DashboardComponent implements OnInit {
     return date?.split('-').reverse().join('-');
   }
 
-  updateQuery(value: string) {
-    this.query.set(value);
-  }
-
   toggleProjectMenu(projectId: string, event: Event) {
     event.stopPropagation();
     this.openMenuId = this.openMenuId === projectId ? null : projectId;
   }
 
-  // Add Project
   openAddProjectModal() {
     this.getCategories();
     this.getUsers('create');
@@ -161,7 +195,6 @@ export class DashboardComponent implements OnInit {
     return status.toLowerCase();
   }
 
-  // TODO: Mudar os status para ficar com lowCase
   showProjectStatus(status: string): string {
     const statuses: Record<string, string> = {
       'active': ProjectStatuses.active,
@@ -200,14 +233,12 @@ export class DashboardComponent implements OnInit {
     this.createProject();
   }
 
-  // Edit Project
   openEditProjectModal(project: any, event: Event) {
     event.stopPropagation();
     this.getCategories();
     this.getUsers('update');
     this.selectedProject = project;
     
-    // Limpa o FormArray e adiciona os usuários do projeto
     this.memberIds.clear();
     if (project.members && Array.isArray(project.members)) {
       project.members.forEach((member: any) => {
@@ -267,7 +298,6 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  // Delete Project
   openDeleteProjectModal(project: any, event: Event) {
     event.stopPropagation();
     this.selectedProject = project;
@@ -301,7 +331,43 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  // User Selection Methods
+  openFinalizeProjectModal(project: any, event: Event) {
+    event.stopPropagation();
+    this.selectedProject = project;
+    this.isFinalizeProjectModalOpen = true;
+    this.openMenuId = null;
+  }
+
+  closeFinalizeProjectModal() {
+    this.isFinalizeProjectModalOpen = false;
+    this.selectedProject = null;
+  }
+
+  confirmFinalizeProject() {
+    if (!this.selectedProject) return;
+
+    const payload = {
+      status: 'done'
+    };
+
+    this.projectService.updateProject(this.selectedProject.id, payload).subscribe({
+      next: (res) => {
+        this.toastr.success('Projeto finalizado com sucesso!', 'Sucesso!');
+        this.getProjects();
+        this.closeFinalizeProjectModal();
+      },
+      error: (err) => {
+        console.error('Erro ao finalizar projeto', err);
+        if (err.status == 403) {
+          this.toastr.warning('Não é possível finalizar um projeto em que você não é responsável', 'Aviso!');
+          this.closeFinalizeProjectModal();
+        } else {
+          this.toastr.error('Erro ao finalizar projeto', 'Erro!');
+        }
+      }
+    });
+  }
+
   isMemberSelected(userId: number): boolean {
     return this.memberIds.value.includes(userId);
   }

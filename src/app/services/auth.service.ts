@@ -30,9 +30,13 @@ export class AuthService {
     .post({ url: 'auth/register', payload: user })
     .subscribe({
       next: res => {
-        this.toastr.success('Usuário cadastrado com sucesso!', 'Sucesso!')
+        this.toastr.success('Usuário cadastrado com sucesso!', 'Sucesso!');
       },
-      error: err => console.error('Erro ao registrar usuário', err),
+      error: (err) => {
+        if (err.error.message === 'Email already registered') {
+          this.toastr.warning('Email já registrado!', 'Aviso')
+        }
+      }
     });
   }
   
@@ -44,7 +48,15 @@ export class AuthService {
         this.setIsLogged(true);
         this.router.navigateByUrl('/dashboard');
       },
-      error: err => console.error('Erro ao logar usuário', err),
+      error: err => {
+        // console.error('Erro ao logar usuário', err)
+        
+        if (err.error.message === 'Invalid credentials') {
+          this.toastr.warning('Credenciais inválidas!', 'Aviso!');
+        } else {
+          this.toastr.error('Erro ao logar usuário!', 'Erro!');
+        }
+      }
     });
   }
 
@@ -56,6 +68,15 @@ export class AuthService {
         this.router.navigate(['/login']);
       },
       error: err => console.error('Erro ao deslogar usuário', err),
+    });
+  }
+
+  forgotPassword(email: string): Observable<unknown> {
+    return this.apiService.post<{ email: string; }, unknown>({
+      url: 'auth/forgot-password',
+      payload: {
+        email
+      }
     });
   }
 
