@@ -75,7 +75,7 @@
           <input
             formControlName="password"
             type="password"
-            placeholder="Mínimo 6 caracteres"
+            placeholder="Mínimo 10 caracteres"
             class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200 outline-none"
             [class.border-red-500]="password?.invalid && password?.touched"
           />
@@ -84,7 +84,7 @@
           <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
           </svg>
-          Senha é obrigatória (mín. 6 caracteres)
+          Senha é obrigatória (mín. 10 caracteres)
         </p>
       </div>
 
@@ -119,30 +119,42 @@
         </p>
       </div>
 
-      <!-- Força da senha -->
       <div class="space-y-1" *ngIf="password?.value">
+
+        <!-- Barra de força -->
         <div class="flex gap-1">
+
+          <!-- Fraca -->
           <div class="h-1.5 flex-1 rounded-full transition-colors duration-300"
-               [class.bg-red-500]="password?.value.length < 4"
-               [class.bg-gray-200]="password?.value.length >= 4"></div>
+            [class.bg-red-500]="strengthScore === 1"
+            [class.bg-gray-200]="strengthScore !== 1"></div>
+
+          <!-- Média -->
           <div class="h-1.5 flex-1 rounded-full transition-colors duration-300"
-               [class.bg-yellow-500]="password?.value.length >= 4 && password?.value.length < 6"
-               [class.bg-gray-200]="password?.value.length < 4 || password?.value.length >= 6"></div>
+            [class.bg-yellow-500]="strengthScore === 2"
+            [class.bg-gray-200]="strengthScore !== 2"></div>
+
+          <!-- Forte -->
           <div class="h-1.5 flex-1 rounded-full transition-colors duration-300"
-               [class.bg-green-500]="password?.value.length >= 6"
-               [class.bg-gray-200]="password?.value.length < 6"></div>
+            [class.bg-green-500]="strengthScore === 3"
+            [class.bg-gray-200]="strengthScore !== 3"></div>
         </div>
+
+        <!-- Texto -->
         <p class="text-xs text-gray-500">
-          <span *ngIf="password?.value.length < 4" class="text-red-600">Fraca</span>
-          <span *ngIf="password?.value.length >= 4 && password?.value.length < 6" class="text-yellow-600">Média</span>
-          <span *ngIf="password?.value.length >= 6" class="text-green-600">Forte</span>
+          <span *ngIf="strengthScore === 1" class="text-red-600">Fraca — sua senha não atende aos requisitos.</span>
+          <span *ngIf="strengthScore === 2" class="text-yellow-600">Média — você pode melhorar sua senha.</span>
+          <span *ngIf="strengthScore === 3" class="text-green-600">Forte</span>
         </p>
+
       </div>
+
 
       <!-- Botão -->
       <button 
         type="submit"
-        class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-lg hover:shadow-xl">
+        [disabled]="strengthScore === 1"
+        class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed">
         Criar conta
       </button>
 

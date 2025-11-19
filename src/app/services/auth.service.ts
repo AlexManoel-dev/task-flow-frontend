@@ -39,6 +39,11 @@ export class AuthService {
       }
     });
   }
+
+  registerToAdmin(user: User) {
+    return this.apiService
+    .post({ url: 'auth/register', payload: user });
+  }
   
   login(user: { email: string; password: string; }) {
     return this.apiService
@@ -77,6 +82,16 @@ export class AuthService {
       payload: {
         email
       }
+    });
+  }
+
+  resetPassword(payload: { token: string; newPassword: string; }): Observable<unknown> {
+    return this.apiService.post<{ email: string; }, unknown>({
+      url: 'auth/reset-password',
+      payload: {
+        token: payload.token,
+        newPassword: payload.newPassword
+      } as any
     });
   }
 

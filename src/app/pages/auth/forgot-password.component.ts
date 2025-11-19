@@ -27,6 +27,7 @@ export class ForgotPasswordComponent {
   }
 
   sendResetLink() {
+    console.log('sendResetLink');
     if (this.forgotPasswordForm.invalid) {
       return;
     }
@@ -35,6 +36,7 @@ export class ForgotPasswordComponent {
 
     this.authService.forgotPassword(this.forgotPasswordForm.value.email as string).subscribe({
       next: (res) => {
+        console.log('sendResetLink, deu bao');
         this.isLoading = false;
         this.emailSent = true;
       },

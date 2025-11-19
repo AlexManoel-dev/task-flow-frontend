@@ -3,6 +3,9 @@ import { NgFor, NgIf } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { ModalComponent } from '../../shared/modal/modal.component';
 import { UserService } from '../../services/user.service';
+import { ToastrService } from 'ngx-toastr';
+import { AuthService } from '../../services/auth.service';
+import { RoleService } from '../../services/role.service';
 
 @Component({
   selector: 'app-users-list',
@@ -11,9 +14,7 @@ import { UserService } from '../../services/user.service';
   templateUrl: './user-list.component.html'
 })
 export class UsersListComponent implements OnInit {
-  // { id: '1', fullName: 'Carlos Silva', email: 'carlos.silva@empresa.com', role: 'admin', isActive: true },
   users: any[] = [];
-
   filteredUsers = [...this.users];
   searchTerm = '';
   openMenuId: string | null = null;
@@ -27,15 +28,29 @@ export class UsersListComponent implements OnInit {
   
   selectedUser: any = null;
 
-  userForm = this.fb.group({
+  // Formulário para CRIAR usuário (com senha)
+  createUserForm = this.fb.group({
     fullName: ['', Validators.required],
     email: ['', [Validators.required, Validators.email]],
-    role: ['member', Validators.required]
+    password: ['', [Validators.required, Validators.minLength(6)]],
+    confirmPassword: ['', Validators.required],
+    // role: ['member', Validators.required],
+    position: ['']
+  });
+
+  // Formulário para EDITAR usuário (sem senha)
+  editUserForm = this.fb.group({
+    fullName: ['', Validators.required],
+    email: ['', [Validators.required, Validators.email]],
+    position: ['']
   });
 
   constructor(
     private fb: FormBuilder,
-    private userService: UserService
+    private userService: UserService,
+    private authService: AuthService,
+    private roleService: RoleService,
+    private toastr: ToastrService
   ) {}
 
   ngOnInit(): void {
@@ -48,7 +63,7 @@ export class UsersListComponent implements OnInit {
   }
 
   getUsers(): void {
-    this.userService.getUsers().subscribe({
+    this.userService.getUsersAdmin().subscribe({
       next: (res) => {
         console.log('response', res);
         this.users = res as any;
@@ -56,8 +71,15 @@ export class UsersListComponent implements OnInit {
       },
       error: (err) => {
         console.log('error', err);
+        this.toastr.error('Erro ao carregar usuários', 'Erro!');
       }
-    })
+    });
+  }
+
+  passwordsMatch(): boolean {
+    const password = this.createUserForm.get('password')?.value;
+    const confirmPassword = this.createUserForm.get('confirmPassword')?.value;
+    return password === confirmPassword;
   }
 
   toggleUserMenu(userId: string, event: Event) {
@@ -71,12 +93,15 @@ export class UsersListComponent implements OnInit {
     this.filteredUsers = this.users.filter(user => 
       user.fullName.toLowerCase().includes(this.searchTerm) ||
       user.email.toLowerCase().includes(this.searchTerm) ||
-      user.roles[0].toLowerCase().includes(this.searchTerm)
+      this.getRoleLabel(user.roles[0]?.role?.name || '').toLowerCase().includes(this.searchTerm)
     );
   }
 
   getRoleLabel(role: string): string {
     const labels: Record<string, string> = {
+      'Administrator': 'Administrador',
+      'Manager': 'Gerente',
+      'Member': 'Membro',
       'admin': 'Administrador',
       'manager': 'Gerente',
       'member': 'Membro'
@@ -85,50 +110,101 @@ export class UsersListComponent implements OnInit {
   }
 
   getRoleBadgeClass(role: string): string {
+    const normalizedRole = role.toLowerCase();
     const classes: Record<string, string> = {
+      'administrator': 'bg-purple-100 text-purple-700 border-purple-200',
       'admin': 'bg-purple-100 text-purple-700 border-purple-200',
       'manager': 'bg-blue-100 text-blue-700 border-blue-200',
       'member': 'bg-gray-100 text-gray-700 border-gray-200'
     };
-    return classes[role] || 'bg-gray-100 text-gray-700 border-gray-200';
+    return classes[normalizedRole] || 'bg-gray-100 text-gray-700 border-gray-200';
+  }
+
+  // Verifica se o usuário é Admin
+  isUserAdmin(user: any): boolean {
+    return user.roles?.some((r: any) => 
+      r.role?.name?.toLowerCase() === 'administrator' || 
+      r.role?.name?.toLowerCase() === 'admin'
+    ) || false;
+  }
+
+  // Toggle Admin Status
+  toggleAdminStatus(user: any, event: Event): void {
+    event.stopPropagation();
+    
+    const isCurrentlyAdmin = this.isUserAdmin(user);
+    const newRole = isCurrentlyAdmin ? 'Member' : 'Administrator';
+    
+    console.log(`Alterando role de ${user.fullName} para ${newRole}`);
+
+    // Chama a rota do backend para atualizar o role
+    this.userService.toggleAdmin(user.id, {}).subscribe({
+      next: (res) => {
+        console.log('Role atualizado:', res);
+        this.toastr.success(
+          `${user.fullName} ${isCurrentlyAdmin ? 'não é mais' : 'agora é'} administrador`,
+          'Sucesso!'
+        );
+        this.getUsers(); // Recarrega a lista
+      },
+      error: (err) => {
+        console.error('Erro ao atualizar role:', err);
+        this.toastr.error('Erro ao atualizar permissões', 'Erro!');
+      }
+    });
   }
 
   // ========== ADD USER ==========
   openAddUserModal() {
+    this.createUserForm.reset({
+      fullName: '',
+      email: '',
+      password: '',
+      // role: 'member',
+      position: ''
+    });
     this.isAddUserModalOpen = true;
   }
 
   closeAddUserModal() {
     this.isAddUserModalOpen = false;
-    this.userForm.reset({ role: 'member' });
+    // this.createUserForm.reset({ role: 'member' });
   }
 
   submitUser() {
-    if (this.userForm.invalid) {
-      this.userForm.markAllAsTouched();
+    if (this.createUserForm.invalid) {
+      this.createUserForm.markAllAsTouched();
       return;
     }
 
-    const newUser = {
-      id: (this.users.length + 1).toString(),
-      ...this.userForm.value,
-      isActive: true
-    };
+    if (!this.passwordsMatch()) {
+      this.toastr.error('As senhas não coincidem', 'Erro!');
+      return;
+    }
 
-    this.users.push(newUser as any);
-    this.filteredUsers = [...this.users];
-    this.closeAddUserModal();
-    
-    console.log('Usuário criado:', newUser);
+    const payload = this.createUserForm.value;
+
+    this.authService.registerToAdmin(payload as any).subscribe({
+      next: (res) => {
+        console.log('Usuário criado:', res);
+        this.toastr.success('Usuário criado com sucesso!', 'Sucesso!');
+        this.getUsers();
+        this.closeAddUserModal();
+      },
+      error: (err) => {
+        console.error('Erro ao criar usuário:', err);
+        this.toastr.error('Erro ao criar usuário', 'Erro!');
+      }
+    });
   }
 
   // ========== EDIT USER ==========
   openEditUserModal(user: any) {
     this.selectedUser = user;
-    this.userForm.patchValue({
+    this.editUserForm.patchValue({
       fullName: user.fullName,
       email: user.email,
-      role: user.role
+      position: user.position
     });
     this.isEditUserModalOpen = true;
     this.openMenuId = null;
@@ -137,26 +213,29 @@ export class UsersListComponent implements OnInit {
   closeEditUserModal() {
     this.isEditUserModalOpen = false;
     this.selectedUser = null;
-    this.userForm.reset({ role: 'member' });
+    this.editUserForm.reset();
   }
 
   updateUser() {
-    if (this.userForm.invalid || !this.selectedUser) {
-      this.userForm.markAllAsTouched();
+    if (this.editUserForm.invalid || !this.selectedUser) {
+      this.editUserForm.markAllAsTouched();
       return;
     }
 
-    const index = this.users.findIndex(u => u.id === this.selectedUser.id);
-    if (index !== -1) {
-      this.users[index] = {
-        ...this.users[index],
-        ...this.userForm.value
-      } as any;
-      this.filteredUsers = [...this.users];
-    }
+    const payload = this.editUserForm.value;
 
-    console.log('Usuário atualizado:', this.users[index]);
-    this.closeEditUserModal();
+    this.userService.updateSpecificUser(this.selectedUser.id, payload as any).subscribe({
+      next: (res) => {
+        console.log('Usuário atualizado:', res);
+        this.toastr.success('Usuário atualizado com sucesso!', 'Sucesso!');
+        this.getUsers();
+        this.closeEditUserModal();
+      },
+      error: (err) => {
+        console.error('Erro ao atualizar usuário:', err);
+        this.toastr.error('Erro ao atualizar usuário', 'Erro!');
+      }
+    });
   }
 
   // ========== DELETE USER ==========
@@ -174,14 +253,18 @@ export class UsersListComponent implements OnInit {
   confirmDeleteUser() {
     if (!this.selectedUser) return;
 
-    const index = this.users.findIndex(u => u.id === this.selectedUser.id);
-    if (index !== -1) {
-      this.users.splice(index, 1);
-      this.filteredUsers = [...this.users];
-    }
-
-    console.log('Usuário excluído:', this.selectedUser);
-    this.closeDeleteUserModal();
+    this.userService.deleteUser(this.selectedUser.id).subscribe({
+      next: () => {
+        console.log('Usuário excluído:', this.selectedUser);
+        this.toastr.success('Usuário excluído com sucesso!', 'Sucesso!');
+        this.getUsers();
+        this.closeDeleteUserModal();
+      },
+      error: (err) => {
+        console.error('Erro ao excluir usuário:', err);
+        this.toastr.error('Erro ao excluir usuário', 'Erro!');
+      }
+    });
   }
 
   // ========== DEACTIVATE USER ==========
@@ -199,14 +282,18 @@ export class UsersListComponent implements OnInit {
   confirmDeactivateUser() {
     if (!this.selectedUser) return;
 
-    const index = this.users.findIndex(u => u.id === this.selectedUser.id);
-    if (index !== -1) {
-      this.users[index].isActive = false;
-      this.filteredUsers = [...this.users];
-    }
-
-    console.log('Usuário desativado:', this.users[index]);
-    this.closeDeactivateUserModal();
+    this.userService.deactivateUser(this.selectedUser.id, {}).subscribe({
+      next: () => {
+        console.log('Usuário desativado:', this.selectedUser);
+        this.toastr.success('Usuário desativado com sucesso!', 'Sucesso!');
+        this.getUsers();
+        this.closeDeactivateUserModal();
+      },
+      error: (err) => {
+        console.error('Erro ao desativar usuário:', err);
+        this.toastr.error('Erro ao desativar usuário', 'Erro!');
+      }
+    });
   }
 
   // ========== REACTIVATE USER ==========
@@ -224,13 +311,17 @@ export class UsersListComponent implements OnInit {
   confirmReactivateUser() {
     if (!this.selectedUser) return;
 
-    const index = this.users.findIndex(u => u.id === this.selectedUser.id);
-    if (index !== -1) {
-      this.users[index].isActive = true;
-      this.filteredUsers = [...this.users];
-    }
-
-    console.log('Usuário reativado:', this.users[index]);
-    this.closeReactivateUserModal();
+    this.userService.activateUser(this.selectedUser.id, {}).subscribe({
+      next: () => {
+        console.log('Usuário desativado:', this.selectedUser);
+        this.toastr.success('Usuário desativado com sucesso!', 'Sucesso!');
+        this.getUsers();
+        this.closeReactivateUserModal();
+      },
+      error: (err) => {
+        console.error('Erro ao desativar usuário:', err);
+        this.toastr.error('Erro ao desativar usuário', 'Erro!');
+      }
+    });
   }
 }

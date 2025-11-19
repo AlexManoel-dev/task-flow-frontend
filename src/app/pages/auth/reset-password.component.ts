@@ -20,7 +20,7 @@ export class ResetPasswordComponent implements OnInit {
   showConfirmPassword = false;
 
   resetPasswordForm = this.fb.group({
-    oldPassword: ['', [Validators.required, Validators.minLength(6)]],
+    // oldPassword: ['', [Validators.required, Validators.minLength(6)]],
     newPassword: ['', [Validators.required, Validators.minLength(6)]],
     confirmPassword: ['', [Validators.required]]
   }, {
@@ -92,21 +92,21 @@ export class ResetPasswordComponent implements OnInit {
 
     const payload = {
       token: this.token,
-      oldPassword: this.resetPasswordForm.value.oldPassword as string,
+      // oldPassword: this.resetPasswordForm.value.oldPassword as string,
       newPassword: this.resetPasswordForm.value.newPassword as string
     };
 
-    // this.authService.resetPassword(payload).subscribe({
-    //   next: (res) => {
-    //     this.isLoading = false;
-    //     this.passwordReset = true;
-    //   },
-    //   error: (err) => {
-    //     this.isLoading = false;
-    //     console.error('Erro ao redefinir senha:', err);
-    //     // Aqui você pode adicionar um toast/alert de erro
-    //   }
-    // });
+    this.authService.resetPassword(payload).subscribe({
+      next: (res) => {
+        this.isLoading = false;
+        this.passwordReset = true;
+      },
+      error: (err) => {
+        this.isLoading = false;
+        console.error('Erro ao redefinir senha:', err);
+        // Aqui você pode adicionar um toast/alert de erro
+      }
+    });
   }
 
   goToLogin() {

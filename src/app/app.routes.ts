@@ -23,7 +23,7 @@ export const routes: Routes = [
     component: LandingComponent
   },
   {
-    path: 'reset-password',
+    path: 'auth/reset-password',
     component: ResetPasswordComponent
   },
   {

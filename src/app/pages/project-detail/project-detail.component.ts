@@ -9,6 +9,8 @@ import { TaskService } from '../../services/task.service';
 import { ToastrService } from 'ngx-toastr';
 import { ProjectService } from '../../services/project.service';
 import { UserService } from '../../services/user.service';
+import { CommentsAndAttachementsService } from '../../services/comments-and-attachements.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-project-detail',
@@ -43,7 +45,7 @@ export class ProjectDetailComponent implements OnInit {
   taskForm = this.fb.group({
     title: ['', Validators.required],
     description: [''],
-    status: ['', Validators.required],
+    status: [''],
     priority: ['', Validators.required],
     startDate: ['', Validators.required],
     dueDate: ['', Validators.required],
@@ -77,7 +79,8 @@ export class ProjectDetailComponent implements OnInit {
     private taskService: TaskService,
     private toastr: ToastrService,
     private projectService: ProjectService,
-    private userService: UserService
+    private userService: UserService,
+    private commentsAndAttachementsService: CommentsAndAttachementsService
   ) {}
 
   ngOnInit(): void {
@@ -176,21 +179,42 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   openAddTaskModal(): void {
-    this.getUsers();
-    this.isAddTaskModalOpen = true;
-  }
+  this.getUsers();
+  // Reseta o form com valores vazios/default
+  this.taskForm.reset({
+    title: '',
+    description: '',
+    status: '',
+    priority: '',
+    startDate: '',
+    dueDate: '',
+    taskType: '',
+    assigneeId: null
+  });
+  this.isAddTaskModalOpen = true;
+}
 
   closeAddTaskModal(): void {
     this.isAddTaskModalOpen = false;
     this.taskForm.reset({ 
       priority: 'medium',
-      status: 'A fazer',
+      status: 'todo',
       assigneeId: null
     });
   }
 
   getProjectStatus(status: string): string {
     return status.toLowerCase();
+  }
+
+  getProjectStatusBasedOnObject(status: string): string {
+    const statusMap: Record<string, string> = {
+      'active': 'Ativo',
+      'in_progress': 'Em progresso',
+      'done': 'Finalizado'
+    };
+
+    return statusMap[status];
   }
 
   checkIfIsManagerOrAdmin(project: any): boolean {
@@ -255,6 +279,7 @@ export class ProjectDetailComponent implements OnInit {
         this.toastr.success('Tarefa criada com sucesso!', 'Sucesso!');
         this.closeAddTaskModal();
         this.getTasks();
+        this.findProject();
       },
       error: (err) => {
         console.error('Erro ao criar tarefa', err);
@@ -382,8 +407,9 @@ export class ProjectDetailComponent implements OnInit {
     this.taskService.deleteTask(this.selectedTask.id).subscribe({
       next: () => {
         this.toastr.success('Tarefa excluída com sucesso!', 'Sucesso!');
-        this.getTasks();
         this.closeDeleteTaskModal();
+        this.getTasks();
+        this.findProject();
       },
       error: (err) => {
         console.error('Erro ao excluir tarefa', err);
@@ -413,15 +439,15 @@ export class ProjectDetailComponent implements OnInit {
 
   // ========== COMENTÁRIOS ==========
   loadTaskComments(taskId: number): void {
-    // this.taskService.getComments(taskId).subscribe({
-    //   next: (res) => {
-    //     console.log('comments', res);
-    //     this.comments.set(res);
-    //   },
-    //   error: (err) => {
-    //     console.error('Erro ao buscar comentários', err);
-    //   }
-    // });
+    this.commentsAndAttachementsService.getTaskComments(taskId).subscribe({
+      next: (res) => {
+        console.log('comments', res);
+        this.comments.set(res);
+      },
+      error: (err) => {
+        console.error('Erro ao buscar comentários', err);
+      }
+    });
   }
 
   addComment(): void {
@@ -433,43 +459,43 @@ export class ProjectDetailComponent implements OnInit {
       userId: this.currentUser.id
     };
 
-    // this.taskService.createComment(this.selectedTask.id, payload).subscribe({
-    //   next: (res) => {
-    //     this.toastr.success('Comentário adicionado!', 'Sucesso!');
-    //     this.newComment = '';
-    //     this.loadTaskComments(this.selectedTask.id);
-    //   },
-    //   error: (err) => {
-    //     console.error('Erro ao adicionar comentário', err);
-    //     this.toastr.error('Erro ao adicionar comentário', 'Erro!');
-    //   }
-    // });
+    this.commentsAndAttachementsService.addCommentToTask(this.selectedTask.id, { body: payload.content }).subscribe({
+      next: (res) => {
+        this.toastr.success('Comentário adicionado!', 'Sucesso!');
+        this.newComment = '';
+        this.loadTaskComments(this.selectedTask.id);
+      },
+      error: (err) => {
+        console.error('Erro ao adicionar comentário', err);
+        this.toastr.error('Erro ao adicionar comentário', 'Erro!');
+      }
+    });
   }
 
   deleteComment(commentId: number): void {
-    // this.taskService.deleteComment(commentId).subscribe({
-    //   next: () => {
-    //     this.toastr.success('Comentário excluído!', 'Sucesso!');
-    //     this.loadTaskComments(this.selectedTask.id);
-    //   },
-    //   error: (err) => {
-    //     console.error('Erro ao excluir comentário', err);
-    //     this.toastr.error('Erro ao excluir comentário', 'Erro!');
-    //   }
-    // });
+    this.commentsAndAttachementsService.deleteCommentToTask(commentId).subscribe({
+      next: () => {
+        this.toastr.success('Comentário excluído!', 'Sucesso!');
+        this.loadTaskComments(this.selectedTask.id);
+      },
+      error: (err) => {
+        console.error('Erro ao excluir comentário', err);
+        this.toastr.error('Erro ao excluir comentário', 'Erro!');
+      }
+    });
   }
 
   // ========== ANEXOS ==========
   loadTaskAttachments(taskId: number): void {
-    // this.taskService.getAttachments(taskId).subscribe({
-    //   next: (res) => {
-    //     console.log('attachments', res);
-    //     this.attachments.set(res);
-    //   },
-    //   error: (err) => {
-    //     console.error('Erro ao buscar anexos', err);
-    //   }
-    // });
+    this.commentsAndAttachementsService.getTaskAttachments(taskId).subscribe({
+      next: (res) => {
+        console.log('attachments', res);
+        this.attachments.set(res);
+      },
+      error: (err) => {
+        console.error('Erro ao buscar anexos', err);
+      }
+    });
   }
 
   onFileSelect(event: any): void {
@@ -484,37 +510,40 @@ export class ProjectDetailComponent implements OnInit {
 
     const formData = new FormData();
     this.selectedFiles.forEach(file => {
-      formData.append('files', file);
+      formData.append('file', file);
     });
 
-    // this.taskService.uploadAttachments(this.selectedTask.id, formData).subscribe({
-    //   next: (res) => {
-    //     this.toastr.success('Anexos enviados!', 'Sucesso!');
-    //     this.selectedFiles = [];
-    //     this.loadTaskAttachments(this.selectedTask.id);
-    //   },
-    //   error: (err) => {
-    //     console.error('Erro ao enviar anexos', err);
-    //     this.toastr.error('Erro ao enviar anexos', 'Erro!');
-    //   }
-    // });
+    this.commentsAndAttachementsService.addAttachmentsToTask(this.selectedTask.id, formData).subscribe({
+      next: (res) => {
+        this.toastr.success('Anexos enviados!', 'Sucesso!');
+        this.selectedFiles = [];
+        this.loadTaskAttachments(this.selectedTask.id);
+      },
+      error: (err) => {
+        console.error('Erro ao enviar anexos', err);
+        this.toastr.error('Erro ao enviar anexos', 'Erro!');
+      }
+    });
   }
 
   deleteAttachment(attachmentId: number): void {
-    // this.taskService.deleteAttachment(attachmentId).subscribe({
-    //   next: () => {
-    //     this.toastr.success('Anexo excluído!', 'Sucesso!');
-    //     this.loadTaskAttachments(this.selectedTask.id);
-    //   },
-    //   error: (err) => {
-    //     console.error('Erro ao excluir anexo', err);
-    //     this.toastr.error('Erro ao excluir anexo', 'Erro!');
-    //   }
-    // });
+    this.commentsAndAttachementsService.deleteAttachmentToTask(attachmentId).subscribe({
+      next: () => {
+        this.toastr.success('Anexo excluído!', 'Sucesso!');
+        this.loadTaskAttachments(this.selectedTask.id);
+      },
+      error: (err) => {
+        console.error('Erro ao excluir anexo', err);
+        this.toastr.error('Erro ao excluir anexo', 'Erro!');
+      }
+    });
   }
 
   downloadAttachment(attachment: any): void {
-    window.open(attachment.url, '_blank');
+    const url = `${environment.baseUrl}${attachment.fileUrl}`;
+    
+    console.log('URL completa:', url); // Debug
+    window.open(url, '_blank');
   }
 
   getFileIcon(fileName: string): string {

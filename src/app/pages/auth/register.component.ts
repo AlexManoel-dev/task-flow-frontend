@@ -43,6 +43,35 @@ export class RegisterComponent {
     return password.value === confirmPassword.value ? null : { passwordMismatch: true };
   }
 
+  get strengthScore(): number {
+    const pwd = this.password?.value ?? "";
+
+    let score = 0;
+
+    const hasLower = /[a-z]/.test(pwd);
+    const hasUpper = /[A-Z]/.test(pwd);
+    const hasNumber = /[0-9]/.test(pwd);
+    const hasSpecial = /[^A-Za-z0-9]/.test(pwd);
+    const longEnoughMedium = pwd.length >= 6;
+    const longEnoughStrong = pwd.length >= 10;
+
+    // Começa fraca se tiver qualquer conteúdo
+    if (pwd.length > 0) score = 1;
+
+    // Média: 6+ chars, maiúscula, minúscula e número
+    if (hasLower && hasUpper && hasNumber && longEnoughMedium) {
+      score = 2;
+    }
+
+    // Forte: 10+ chars + todos os requisitos
+    if (hasLower && hasUpper && hasNumber && hasSpecial && longEnoughStrong) {
+      score = 3;
+    }
+
+    return score;
+  }
+
+
   submit() {
     if (this.registerForm.invalid) {
       this.registerForm.markAllAsTouched();
